@@ -3,8 +3,8 @@
 `Symbolic Execution` is an open specification effort for private, composable
 execution on Ethereum.
 
-The project is inspired by the contract model introduced by `fhEVM`-style
-systems:
+The project is inspired by the pointer-based confidential token model described
+in [ERC-7984](https://eips.ethereum.org/EIPS/eip-7984):
 contracts manipulate private values as opaque objects, those values compose
 across applications, and the realization of private computation happens
 asynchronously off-chain.
