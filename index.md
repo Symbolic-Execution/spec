@@ -15,6 +15,10 @@ infrastructure map.
 The first objective is to describe the system clearly enough that contributors
 can reason about it, challenge it, and eventually implement it in public.
 
+The broader aim is to define a credibly neutral privacy layer for Ethereum:
+shared privacy infrastructure that remains open, composable, and legible enough
+to be adopted across applications rather than controlled by a single silo.
+
 ## Core Thesis
 
 Private computation on Ethereum should feel like a native contract primitive,

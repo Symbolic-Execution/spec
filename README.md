@@ -9,6 +9,10 @@ or isolated tool creating fragmented liquidity.
 We are interested in systems where contracts can work with private values as
 first-class objects and private state can compose across applications.
 
+We aim to help define a credibly neutral privacy layer for Ethereum: open,
+composable infrastructure that many applications can share rather than a
+privacy system tied to a single product, operator, or silo.
+
 ## Why
 
 Privacy on Ethereum is still too fragmented.
