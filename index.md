@@ -13,7 +13,7 @@ This repository starts from the core abstraction, not from a fully decomposed
 infrastructure map.
 
 The first objective is to describe the system clearly enough that contributors
-can reason about it, challenge it, and eventually implement it in public.
+can reason about it, challenge it, and eventually implement it.
 
 The broader aim is to define a credibly neutral privacy layer for Ethereum:
 shared privacy infrastructure that remains open, composable, and legible enough
@@ -31,15 +31,15 @@ That means:
 - contracts should be able to express operations over those values
 - private state should remain composable across applications
 - actual private computation can happen off-chain as long as the contract-facing
-  abstraction remains stable
+  abstraction remains stable and verifiable.
 
 ## Current Direction
 
 The current architecture direction is a hybrid model:
 
-- attested execution for private computation
+- attested execution for private computation (TEEs)
 - threshold cryptography for key custody, decryption, re-encryption, and
-  resilience
+  resilience (MPC)
 
 This is not presented as a finalized implementation commitment yet. It is the
 current direction of the specification effort.
@@ -73,6 +73,14 @@ It should gradually become more precise by defining:
 - the lifecycle of a private operation from request to finalization
 - the permissions model for reads and disclosure
 - the first reusable application patterns built on top
+
+## Lower-Level Specs
+
+- [`./symvm/README.md`](./symvm/README.md)
+- [`./symvm/symvm-private-handles.md`](./symvm/symvm-private-handles.md)
+- [`./symvm/symvm-operations.md`](./symvm/symvm-operations.md)
+- [`./symvm/symvm-operation-lifecycle.md`](./symvm/symvm-operation-lifecycle.md)
+- [`./symvm/symvm-permissions-and-reads.md`](./symvm/symvm-permissions-and-reads.md)
 
 ## Non-Goals For The First Draft
 
