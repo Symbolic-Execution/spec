@@ -112,6 +112,9 @@ Encoding rules:
 
 `sym-client` encrypts private inputs as `SystemCiphertextV1`.
 
+`aad` uses the canonical encoding defined in
+[`../mpc/mpc-api.md`](../mpc/mpc-api.md).
+
 ```rust
 pub struct EncryptInputRequest {
     pub chain_id: u64,
@@ -132,13 +135,13 @@ Encryption flow:
 
 1. fetch `CoordinatorConfig`
 2. encode the plaintext as canonical CBOR
-3. construct the `aad` for the target contract and type
+3. construct `SystemInputAadV1`
 4. generate a random data-encryption key
 5. encrypt the plaintext with `AES-256-GCM`
 6. wrap the data-encryption key to `mpc_hpke_public_key` using `HPKE`
 7. package the result as `SystemCiphertextV1`
 
-`aad` binds the ciphertext to protocol context such as:
+`SystemInputAadV1` binds:
 
 - `chain_id`
 - `domain_id`
@@ -233,7 +236,7 @@ pub struct DecryptReaderCiphertextResponse {
 Decryption flow:
 
 1. use the reader secret key to open `ReaderCiphertextV1`
-2. verify the `aad` bindings
+2. parse and verify `ReaderAadV1`
 3. decode the canonical-CBOR plaintext
 4. return the typed plaintext value
 

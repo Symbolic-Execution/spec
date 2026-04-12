@@ -98,10 +98,11 @@ The coprocessor resolves a handle in the following order:
 4. generate an enclave keypair and attestation
 5. ask `MPC` to transform each required input `SystemCiphertextV1` payload to
    `EnclaveCiphertextV1`
-6. decrypt the enclave-targeted ciphertexts inside the enclave
+6. decrypt the enclave-targeted ciphertexts inside the enclave and verify
+   `EnclaveAadV1`
 7. evaluate the symbolic operation inside the enclave
 8. package the result as `SystemCiphertextV1` using the public configuration
-   published by `MPC`
+   published by `MPC` and encode `SystemHandleAadV1`
 9. bind the result ciphertext and execution receipt to the handle
 
 ## Internal API
@@ -199,6 +200,9 @@ The coprocessor requests one `to-enclave` transformation for each input
 
 The coprocessor treats these payloads as types defined by the `MPC`
 specification.
+
+The canonical `aad` encoding is defined in
+[`../mpc/mpc-api.md`](../mpc/mpc-api.md).
 
 ```rust
 pub struct SystemCiphertextV1 {

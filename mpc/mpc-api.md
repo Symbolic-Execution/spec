@@ -17,6 +17,7 @@ payloads are encoded as base64url strings.
 ## Core Types
 
 ```rust
+pub type Address = [u8; 20];
 pub type Bytes32 = [u8; 32];
 
 pub struct DomainId(pub Bytes32);
@@ -25,6 +26,7 @@ pub struct RequestId(pub Bytes32);
 pub struct ReaderId(pub Bytes32);
 pub struct HandleId(pub Bytes32);
 pub struct EnclaveMeasurement(pub Bytes32);
+pub struct AttestationDigest(pub Bytes32);
 
 pub struct X25519PublicKey(pub [u8; 32]);
 pub struct Attestation(pub Vec<u8>);
@@ -122,9 +124,14 @@ Authorization rules:
 
 1. parse and validate the request body
 2. verify `system_ciphertext.key_id` is active
-3. verify the attestation binds `enclave_pubkey` to `measurement`
-4. verify `measurement` matches the approved enclave measurement
-5. return `EnclaveCiphertextV1`
+3. parse `system_ciphertext.aad` as `SystemInputAadV1` or `SystemHandleAadV1`
+4. verify `request.chain_id == system_ciphertext.aad.chain_id`
+5. if the source `aad` is `SystemHandleAadV1`, verify
+   `request.handle_id == system_ciphertext.aad.handle_id`
+6. verify the attestation binds `enclave_pubkey` to `measurement`
+7. verify `measurement` matches the approved enclave measurement
+8. construct `EnclaveAadV1` from the request and the source system `aad`
+9. return `EnclaveCiphertextV1`
 
 ### `POST /v1/operations/to-reader`
 
@@ -150,7 +157,11 @@ Authorization rules:
 1. parse and validate the request body
 2. resolve the registered reader public key for `reader_id`
 3. verify `system_ciphertext.key_id` is active
-4. return `ReaderCiphertextV1`
+4. parse `system_ciphertext.aad` as `SystemHandleAadV1`
+5. verify `request.chain_id == system_ciphertext.aad.chain_id`
+6. verify `request.handle_id == system_ciphertext.aad.handle_id`
+7. construct `ReaderAadV1` from the request and the source system `aad`
+8. return `ReaderCiphertextV1`
 
 ## Threshold Signatures
 
@@ -194,6 +205,103 @@ HTTP status mapping:
 
 ## Ciphertext Formats
 
+### Canonical `aad` Encoding
+
+`aad` is the canonical CBOR encoding of a fixed-length array.
+
+It is not encoded as a map.
+
+Encoding rules:
+
+- every `aad` payload starts with `version`
+- `version` is encoded as a CBOR unsigned integer
+- `kind` is encoded as a CBOR unsigned integer
+- `chain_id` is encoded as a CBOR unsigned integer
+- `Address` is encoded as a 20-byte CBOR byte string
+- `Bytes32`, `DomainId`, `KeyId`, `RequestId`, `ReaderId`, `HandleId`, and
+  `AttestationDigest` are encoded as 32-byte CBOR byte strings
+- `type_tag` is encoded as a CBOR text string
+- array element order is fixed by the schema
+
+```rust
+pub enum AadKind {
+    SystemInput = 1,
+    SystemHandle = 2,
+    Enclave = 3,
+    Reader = 4,
+}
+
+pub struct SystemInputAadV1 {
+    pub version: u8,
+    pub kind: AadKind,
+    pub chain_id: u64,
+    pub domain_id: DomainId,
+    pub contract: Address,
+    pub type_tag: String,
+    pub key_id: KeyId,
+}
+
+pub struct SystemHandleAadV1 {
+    pub version: u8,
+    pub kind: AadKind,
+    pub chain_id: u64,
+    pub domain_id: DomainId,
+    pub handle_id: HandleId,
+    pub type_tag: String,
+    pub key_id: KeyId,
+}
+
+pub struct EnclaveAadV1 {
+    pub version: u8,
+    pub kind: AadKind,
+    pub chain_id: u64,
+    pub domain_id: DomainId,
+    pub request_id: RequestId,
+    pub handle_id: HandleId,
+    pub type_tag: String,
+    pub attestation_digest: AttestationDigest,
+    pub key_id: KeyId,
+}
+
+pub struct ReaderAadV1 {
+    pub version: u8,
+    pub kind: AadKind,
+    pub chain_id: u64,
+    pub domain_id: DomainId,
+    pub request_id: RequestId,
+    pub handle_id: HandleId,
+    pub reader_id: ReaderId,
+    pub type_tag: String,
+    pub key_id: KeyId,
+}
+```
+
+The encoded arrays are:
+
+- `SystemInputAadV1`:
+  `[version, kind, chain_id, domain_id, contract, type_tag, key_id]`
+- `SystemHandleAadV1`:
+  `[version, kind, chain_id, domain_id, handle_id, type_tag, key_id]`
+- `EnclaveAadV1`:
+  `[version, kind, chain_id, domain_id, request_id, handle_id, type_tag, attestation_digest, key_id]`
+- `ReaderAadV1`:
+  `[version, kind, chain_id, domain_id, request_id, handle_id, reader_id, type_tag, key_id]`
+
+Derivation rules:
+
+- `EnclaveAadV1` copies `chain_id`, `domain_id`, `type_tag`, and `key_id`
+  from the source `SystemInputAadV1` or `SystemHandleAadV1`
+- `ReaderAadV1` copies `chain_id`, `domain_id`, `type_tag`, and `key_id`
+  from the source `SystemHandleAadV1`
+
+`attestation_digest` is defined as:
+
+```rust
+pub fn attestation_digest(attestation: Attestation) -> AttestationDigest {
+    AttestationDigest(keccak256(attestation.0))
+}
+```
+
 ### Inner Plaintext Encoding
 
 Plaintext payloads are encoded as canonical CBOR.
@@ -203,15 +311,8 @@ For the initial typed handle set:
 - `suint256` values are encoded as 32-byte big-endian byte strings
 - `sbool` values are encoded as a single byte, `0x00` or `0x01`
 
-The AEAD additional authenticated data (`aad`) binds the ciphertext to
-protocol context such as:
-
-- `chain_id`
-- `domain_id`
-- `contract`
-- `handle_id` or `request_id`
-- `type_tag`
-- `key_id`
+The AEAD additional authenticated data (`aad`) uses the canonical encoding
+defined above.
 
 ### `SystemCiphertextV1`
 
@@ -234,6 +335,8 @@ Construction:
 - encrypt the canonical-CBOR plaintext with `AES-256-GCM`
 - wrap the data-encryption key to the published `MPC` public configuration using
   `HPKE` with `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
+- encode `aad` as `SystemInputAadV1` for client-encrypted inputs
+- encode `aad` as `SystemHandleAadV1` for handle-bound system values
 
 ### `EnclaveCiphertextV1`
 
@@ -253,8 +356,7 @@ Construction:
 
 - use `HPKE` directly to the enclave public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
-- bind `request_id`, `handle_id`, `chain_id`, and the enclave attestation
-  digest in `aad`
+- encode `aad` as `EnclaveAadV1`
 
 ### `ReaderCiphertextV1`
 
@@ -273,4 +375,4 @@ Construction:
 
 - use `HPKE` directly to the reader public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
-- bind `request_id`, `reader_id`, `handle_id`, and `chain_id` in `aad`
+- encode `aad` as `ReaderAadV1`
