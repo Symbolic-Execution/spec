@@ -35,6 +35,15 @@ especially its pointer-based and technology-agnostic approach to confidential
 values, while aiming to define an independent and openly developed model for
 private, composable execution on Ethereum.
 
+## Spec Structure
+
+The specifications are currently split into four minimal architecture modules:
+
+- `client/` for the user-facing and application-facing role
+- `symvm/` for the contract-facing abstraction
+- `coprocessor/` for off-chain private execution
+- `mpc/` for threshold key custody and authorization
+
 ## Open Source Ethos
 
 We want to build this in public.
