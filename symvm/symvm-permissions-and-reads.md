@@ -32,6 +32,12 @@ The intended read model is:
 - contract-visible disclosure is left out of the base spec unless a higher-level
   ERC requires it
 
+For v1, disclosure authorization should stay simple:
+
+- the `Coordinator` accepts an EIP-712 signed disclosure request from the
+  handle's controlling account, as defined by the higher-level standard
+- no persistent base-spec approval registry is required
+
 ## Requirements
 
 ### Explicit Authorization
@@ -71,6 +77,9 @@ recipient under an explicit policy.
 `symVM` provides the on-chain handles and permission surface that the
 `Coordinator`, coprocessor, and `MPC` consult, but the request itself is not a
 base `symVM` operation.
+
+In v1, the simplest model is that the `Coordinator` checks the handle's
+controlling account on-chain and verifies a matching signed request.
 
 ## Recipient-Targeted Disclosure
 

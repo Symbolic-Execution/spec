@@ -25,6 +25,12 @@ In the current architecture direction:
 
 This separates computation from unilateral key power.
 
+For v1, enclave authorization should also stay simple:
+
+- each deployment approves a single enclave measurement
+- `MPC` verifies that the attestation binds the enclave public key to that
+  approved measurement
+
 ## Minimum Responsibilities
 
 - hold key shares rather than a single decryption key
@@ -94,6 +100,16 @@ Requests from the coprocessor should also carry an attestation or receipt
 digest that binds the key operation to a specific execution result and enclave
 public key.
 
+For `POST /v1/operations/to-enclave`, the coprocessor should provide at least:
+
+- `enclave_pubkey`
+- `attestation`
+- `measurement`
+- `request_id`
+- `handle_id`
+- `chain_id`
+- `purpose`
+
 ## Ciphertext Format Recommendations
 
 The first draft should standardize three envelope types plus one shared inner
@@ -155,6 +171,9 @@ decryption material.
 
 Use this envelope for authorized disclosure from `MPC` to a reader key managed
 by `sym-client`, typically delivered through the `Coordinator`.
+
+Reader keys are dedicated encryption keys managed by `sym-client`, not the
+user's Ethereum signing key.
 
 Recommended construction:
 

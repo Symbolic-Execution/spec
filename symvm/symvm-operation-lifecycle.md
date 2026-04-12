@@ -84,10 +84,11 @@ additional conditions.
 
 - track request identifiers and request classes
 - replicate or observe the permission state needed for disclosure
-- verify signed disclosure requests when completion is reader-targeted
+- verify a valid EIP-712 signed disclosure request from the handle's
+  controlling account when completion is reader-targeted
 - verify the TEE execution receipt or attestation for the request
-- verify threshold signatures when the request involves decryption or
-  re-encryption
+- verify threshold signatures when the request involves ciphertext
+  transformation or re-encryption
 - package the validated outcome for either handle materialization or off-chain
   delivery
 

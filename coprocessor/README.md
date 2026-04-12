@@ -25,7 +25,7 @@ The current direction is to run the execution environment inside a `TEE`.
 - persist a local copy of the private handle registry and execution metadata
 - resolve symbolic computations in the private execution environment
 - produce attested results for later verification or disclosure
-- expose result status and opaque ciphertext references to the `Coordinator`
+- expose result status and `SystemCiphertextV1` outputs to the `Coordinator`
 - coordinate with `MPC` when key operations are required
 
 ## Persistence Model
@@ -55,8 +55,7 @@ The coprocessor consumes:
 The coordinator may ask the coprocessor to:
 
 - resolve a handle whose value is still pending
-- return the current `SystemCiphertextV1` or an equivalent opaque result
-  reference
+- return the current `SystemCiphertextV1`
 - report job status, receipts, or failure information
 
 ### Coprocessor <-> `MPC`

@@ -23,17 +23,25 @@ job is to:
 - dispatch key operations to `MPC`
 - return status or reader-targeted ciphertext packages to `sym-client`
 
+For v1, disclosure authorization should stay simple:
+
+- a disclosure request is authorized by a valid EIP-712 signature from the
+  handle's controlling account, as defined by the higher-level standard
+- no persistent off-chain approval registry is required
+
 ## Minimum Responsibilities
 
 - expose the public API consumed by `sym-client`
 - publish the current system public configuration needed for input encryption
 - verify user signatures, nonces, expiries, and reader-key bindings
-- inspect on-chain ownership, approvals, and disclosure policy
+- inspect on-chain controller state and any higher-level-standard disclosure
+  policy
 - create and track async disclosure request state
 - ask the coprocessor to resolve a handle when the result is not yet ready
 - ask `MPC` to transform ciphertexts to either a reader key or another
   authorized recipient key such as an attested enclave key
-- return `ReaderCiphertextV1` or request status to `sym-client`
+- return `ReaderCiphertextV1` immediately when ready, or request status when
+  the request remains pending
 
 ## Interfaces
 
@@ -44,14 +52,20 @@ The minimal public interface is:
 - `GET /v1/config`
 - `PUT /v1/readers/{reader_id}`
 - `POST /v1/disclosures`
-- `GET /v1/disclosures/{request_id}`
+- `GET /v1/disclosures/{request_id}` for pending requests
 
-The signed disclosure request should bind at least:
+`POST /v1/disclosures` should:
+
+- return `200` with `ReaderCiphertextV1` when the disclosure is already ready
+- return `202` with a `request_id` when the disclosure remains pending
+
+The signed disclosure request should use EIP-712 with the user's Ethereum
+signature and bind at least:
 
 - `chain_id`
 - `contract`
 - `handle_id`
-- `reader_id` or `reader_pubkey`
+- `reader_id`
 - `nonce`
 - `expiry`
 
@@ -59,17 +73,16 @@ The signed disclosure request should bind at least:
 
 The coordinator reads:
 
-- current contract state relevant to disclosure authorization
+- current contract state needed to identify the handle's controlling account
+  and any higher-level-standard disclosure policy
 - logs or metadata needed to resolve handle lineage
-- optional delegation or approval data referenced by the request
 
 ### `Coordinator` -> Coprocessor
 
 The coordinator asks the coprocessor to:
 
 - resolve a handle whose value is not yet materialized
-- return the current `SystemCiphertextV1` or an equivalent opaque result
-  reference
+- return the current `SystemCiphertextV1`
 - return receipts, status, and failure information for async jobs
 
 ### `Coordinator` -> `MPC`
