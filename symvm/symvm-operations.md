@@ -59,7 +59,7 @@ about backend execution details.
 
 Operations returning `sbool` must not be treated as ordinary Solidity `bool`
 values. Private predicates remain symbolic until a later disclosure,
-authorization, or finalization step.
+authorization, or resolution step.
 
 ## Initial Operation Surface
 
@@ -128,4 +128,4 @@ The current working choice is to keep the initial operation surface narrowly
 optimized for a confidential token model.
 
 This avoids importing a large symbolic standard library before the semantics of
-request, validation, and finalization are clear.
+request and validation are clear.

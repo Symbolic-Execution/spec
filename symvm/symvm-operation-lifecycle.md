@@ -87,22 +87,18 @@ additional conditions.
 - verify the TEE execution receipt or attestation for the request
 - verify threshold signatures when the request involves decryption or
   re-encryption
-- package the validated outcome for either off-chain delivery or on-chain
-  completion
+- package the validated outcome for either handle materialization or off-chain
+  delivery
 
 ## Stage 5: Completion
 
 Completion is the step where resolved symbolic work becomes usable in one of the
 completion modes supported by `symVM`.
 
-Completion has three distinct modes.
+Completion has two distinct modes:
 
-Mode A and Mode C are both off-chain completion paths, but they are not the
-same:
-
-- Mode A completes symbolic computation without disclosing plaintext
-- Mode C completes an authorized disclosure request by releasing plaintext to a
-  specific reader
+- handle materialization without plaintext disclosure
+- reader-targeted disclosure to a specific authorized reader
 
 ### Mode A: Handle Materialization
 
@@ -111,28 +107,11 @@ off-chain and binds the result to the already-issued derived handle.
 
 In this mode:
 
-- no callback is required
+- no on-chain completion is required
 - no plaintext is revealed
 - the result becomes available for further symbolic use
 
-### Mode B: Callback Fulfillment
-
-When a contract needs a cleartext result or other contract-visible disclosed
-outcome, completion happens through a verified on-chain callback or finalizer
-path.
-
-For callback fulfillment, the on-chain pattern should stay simple:
-
-1. a request id is created when disclosure or callback-based completion is
-   requested
-2. a relayer submits the validated result package back on-chain
-3. the contract verifies the request id, replay protection, and proof material
-4. the contract accepts the result or marks the request as failed
-
-The proof material in `symVM` should be oriented to TEE receipts and
-threshold-crypto attestations.
-
-### Mode C: Reader Disclosure
+### Mode B: Reader Disclosure
 
 When an authorized reader requests disclosure for off-chain consumption,
 completion may terminate off-chain after validation.
@@ -140,8 +119,9 @@ completion may terminate off-chain after validation.
 In this mode:
 
 - the result is delivered privately to the authorized reader
-- no callback is required
+- no on-chain completion is required
 - no plaintext is posted on-chain just to complete the request
 
-The important property is callback verification, not a permanently trusted
-protocol-owned intermediary.
+If a higher-level ERC later needs a contract-visible completion path, it should
+specify that separately rather than making it part of the base `symVM`
+lifecycle.

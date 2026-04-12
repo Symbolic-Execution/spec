@@ -6,7 +6,7 @@ Define what a private handle is in `symVM` and what contracts can assume about
 it.
 
 This is the first lower-level specification because symbolic operations,
-permissions, and finalization all depend on the handle model.
+permissions, and disclosure all depend on the handle model.
 
 ## Working Model
 
@@ -100,8 +100,8 @@ At the contract level, the minimum assumptions are:
 2. A contract may pass a handle to another contract.
 3. A contract may use one or more handles as inputs to symbolic operations.
 4. A contract may receive new handles as outputs from symbolic operations.
-5. A contract may participate in flows that eventually authorize disclosure or
-   finalization related to a handle.
+5. A contract may participate in flows that eventually authorize disclosure
+   related to a handle.
 
 ## Reference, Not Capability
 

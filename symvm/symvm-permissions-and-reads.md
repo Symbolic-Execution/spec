@@ -26,8 +26,9 @@ In the current working model:
 
 The intended read model is:
 
-- smart-contract-visible decryption uses an explicit request plus callback flow
 - private user reads are fulfilled privately to the authorized reader
+- contract-visible disclosure is left out of the base spec unless a higher-level
+  ERC requires it
 
 ## Requirements
 
@@ -75,11 +76,12 @@ authorized reader or reader key, rather than emitted as plaintext on-chain.
 This preserves the privacy model more naturally and matches the intended use
 case of confidential balances and confidential application state.
 
-## Separate Contract And User Fulfillment Modes
+## Current Fulfillment Mode
 
-The current working model is to distinguish:
+The current working model is to specify only:
 
-- contract-visible disclosure, which uses a verified on-chain callback or
-  finalizer path
 - private reader disclosure, which is returned off-chain to the authorized
   reader after validation
+
+If a higher-level ERC needs contract-visible disclosure, it should define that
+flow separately.

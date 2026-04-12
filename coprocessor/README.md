@@ -5,8 +5,7 @@
 Define the minimal role of the coprocessor in the `Symbolic Execution` stack.
 
 This draft keeps the coprocessor spec intentionally small. For now, it only
-states what the coprocessor is responsible for relative to `symVM`, the
-client, and `MPC`.
+states what the coprocessor is responsible for relative to `symVM` and `MPC`.
 
 ## Working Model
 
@@ -52,21 +51,11 @@ The coprocessor consumes:
 
 ### Coprocessor <-> `MPC`
 
-The coprocessor requests threshold key operations when a flow requires:
+The coprocessor uses the `MPC` API when a flow requires:
 
 - decryption
 - re-encryption to a reader
 - threshold signatures or equivalent authorization artifacts
 
-### Coprocessor -> Client / Contract
-
-The coprocessor may complete work by:
-
-- preparing a contract-visible callback package
-- delivering a private result to an authorized reader
-
-## Non-Goals For This Draft
-
-- specifying the enclave implementation
-- specifying the exact local database schema
-- specifying consensus between multiple coprocessor instances
+The base spec does not require the coprocessor to expose a direct public
+interface to `sym-client`.

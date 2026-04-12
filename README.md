@@ -26,28 +26,28 @@ That means:
 
 The current minimal architecture has four pieces:
 
-- `Client`: prepares private inputs and receives authorized outputs
+- `sym-client`: SDK that prepares private inputs, manages reader keys, and
+  receives authorized outputs
 - `symVM`: exposes private handles, symbolic operations, and disclosure flows
   on-chain
 - `Coprocessor`: resolves symbolic work off-chain
 - `MPC`: provides threshold key custody, decryption, re-encryption, and
   related authorization flows
 
-`symVM` is currently the most developed part of the specification.
-
 ## High-Level Flow
 
-1. The `Client` prepares private inputs and submits transactions to contracts
+1. The `sym-client` SDK prepares private inputs and submits transactions to contracts
    that use `symVM`.
 2. `symVM` gives contracts the on-chain abstraction for private handles and
    symbolic operations.
 3. The `Coprocessor` observes those requests, tracks dependencies, and resolves
    private execution off-chain.
-4. When a flow requires key operations, the `Coprocessor` coordinates with
-   `MPC`.
-5. `MPC` performs threshold decryption, re-encryption, or signing work.
-6. The resolved result is materialized as private state, disclosed to an
-   authorized reader, or returned through an explicit callback flow.
+4. When a flow requires key operations, the `Coprocessor` and `sym-client`
+   call `MPC` over HTTP.
+5. `MPC` performs threshold decryption, re-encryption, key registration, or
+   signing work.
+6. The resolved result is materialized as private state or disclosed to an
+   authorized reader.
 
 ## Scope
 
@@ -55,14 +55,14 @@ This specification currently focuses on:
 
 - core terminology
 - private values and symbolic operations
-- how `Client`, `symVM`, `Coprocessor`, and `MPC` connect
+- how `sym-client`, `symVM`, `Coprocessor`, and `MPC` connect
 - operation lifecycle from expression to materialization or disclosure
 - permissions for reads and disclosure
 - reusable application patterns built on top of the model
 
 ## Specs
 
-- [`./client/README.md`](./client/README.md)
+- [`./sym-client/README.md`](./sym-client/README.md)
 - [`./coprocessor/README.md`](./coprocessor/README.md)
 - [`./mpc/README.md`](./mpc/README.md)
 - [`./symvm/README.md`](./symvm/README.md)
@@ -70,10 +70,3 @@ This specification currently focuses on:
 - [`./symvm/symvm-operations.md`](./symvm/symvm-operations.md)
 - [`./symvm/symvm-operation-lifecycle.md`](./symvm/symvm-operation-lifecycle.md)
 - [`./symvm/symvm-permissions-and-reads.md`](./symvm/symvm-permissions-and-reads.md)
-
-## Non-Goals For The First Draft
-
-- fully specifying production infrastructure
-- proving every security property formally
-- locking in all backend details before the contract model is clear
-- standardizing multiple application interfaces too early
