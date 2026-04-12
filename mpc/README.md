@@ -3,7 +3,7 @@
 ## Goal
 
 Define the role of `MPC` in the `Symbolic Execution` stack and the API surface
-through which `sym-client` and the coprocessor request key operations.
+through which the `Coordinator` and the coprocessor request key operations.
 
 This draft keeps `MPC` narrowly scoped to key custody and threshold
 authorization. It does not treat `MPC` as the general private execution layer.
@@ -11,41 +11,41 @@ authorization. It does not treat `MPC` as the general private execution layer.
 ## Working Model
 
 `MPC` is the threshold-cryptography layer responsible for key custody,
-decryption authorization, re-encryption, and resilience.
+authorized ciphertext transformation, re-encryption, and resilience.
 
-Its API is the communication channel for both the coprocessor and
-`sym-client`.
+Its API is used by the `Coordinator` and the coprocessor.
 
 The transport protocol is HTTP.
 
 In the current architecture direction:
 
 - the coprocessor performs private execution
+- the `Coordinator` handles public request orchestration
 - `MPC` controls sensitive key operations
-- `sym-client` uses `MPC` for reader-key and disclosure flows
 
 This separates computation from unilateral key power.
 
 ## Minimum Responsibilities
 
 - hold key shares rather than a single decryption key
-- expose an HTTP API for threshold key operations
-- participate in authorized decryption or re-encryption flows
+- expose an internal HTTP API for threshold key operations
+- participate in authorized ciphertext-transformation and re-encryption flows
 - produce threshold artifacts needed for disclosure or verification
-- define stable ciphertext envelopes for system-held values and reader-targeted
-  outputs
+- define stable ciphertext envelopes for system-held values, enclave-targeted
+  outputs, and reader-targeted outputs
+- never release raw decryption material to other services
 - avoid giving any single operator unilateral control over private outputs
 
 ## Interfaces
 
-### `sym-client` -> `MPC`
+### `Coordinator` -> `MPC`
 
-`sym-client` uses the `MPC` API to:
+The coordinator uses the `MPC` API to:
 
 - fetch the current public-key and parameter bundle
 - register or rotate reader keys
-- submit encrypted private inputs when a flow requires `MPC` ingestion
-- receive reader-targeted disclosure packages
+- request reader-targeted re-encryption
+- receive reader-targeted ciphertext packages
 
 ### Coprocessor -> `MPC`
 
@@ -54,8 +54,8 @@ execution context and attestation material.
 
 The minimal request classes are:
 
-- threshold decryption of system-held ciphertexts
-- re-encryption to an authorized reader key
+- authorized transformation of a system-held ciphertext to an attested enclave
+  public key
 - threshold signatures or equivalent authorization artifacts
 
 The base spec does not require a direct `MPC` to contract interface. If a
@@ -76,12 +76,10 @@ Recommended first endpoints:
 
 - `GET /v1/config` for the current key configuration and supported suites
 - `PUT /v1/readers/{reader_id}` to register or rotate a reader public key
-- `POST /v1/inputs` to ingest a new encrypted private input
-- `POST /v1/operations/decrypt` for coprocessor-driven threshold decryption
-- `POST /v1/operations/reencrypt` for reader-targeted disclosure
+- `POST /v1/operations/to-enclave` for coprocessor-driven transform to an
+  attested enclave key
+- `POST /v1/operations/to-reader` for reader-targeted disclosure
 - `POST /v1/operations/sign` for threshold signatures or equivalent artifacts
-- `GET /v1/disclosures/{request_id}` to fetch a reader-targeted disclosure
-  package
 
 Every `MPC` request should be bound to:
 
@@ -93,11 +91,12 @@ Every `MPC` request should be bound to:
 - `key_id`
 
 Requests from the coprocessor should also carry an attestation or receipt
-digest that binds the key operation to a specific execution result.
+digest that binds the key operation to a specific execution result and enclave
+public key.
 
 ## Ciphertext Format Recommendations
 
-The first draft should standardize two envelope types plus one shared inner
+The first draft should standardize three envelope types plus one shared inner
 plaintext encoding.
 
 ### Inner Plaintext Encoding
@@ -122,8 +121,8 @@ context such as:
 
 ### `SystemCiphertextV1`
 
-Use this envelope for values held under system control and later consumed by
-the coprocessor plus `MPC`.
+Use this envelope for values held under system control and later transformed by
+`MPC` for either enclave execution or reader disclosure.
 
 Recommended construction:
 
@@ -136,10 +135,26 @@ Recommended construction:
 This keeps payload encryption simple while allowing key rotation and future
 re-encryption flows.
 
+### `EnclaveCiphertextV1`
+
+Use this envelope when `MPC` authorizes execution and transforms a
+`SystemCiphertextV1` payload to the enclave's attested public key.
+
+Recommended construction:
+
+- use `HPKE` directly to the enclave ephemeral public key
+- use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
+- carry `key_id`, `enc`, `ciphertext`, and `aad`
+- bind `request_id`, `handle_id`, `chain_id`, `purpose`, and the enclave
+  attestation digest in `aad`
+
+This keeps plaintext inside the enclave boundary while avoiding export of raw
+decryption material.
+
 ### `ReaderCiphertextV1`
 
 Use this envelope for authorized disclosure from `MPC` to a reader key managed
-by `sym-client`.
+by `sym-client`, typically delivered through the `Coordinator`.
 
 Recommended construction:
 

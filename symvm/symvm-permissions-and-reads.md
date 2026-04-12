@@ -23,6 +23,8 @@ In the current working model:
 - disclosure should target an authorized reader rather than publishing plaintext
   on-chain by default
 - read requests are asynchronous, like the rest of the private computation model
+- private reader requests are submitted off-chain to the `Coordinator`, not to
+  `symVM`, in the base spec
 
 The intended read model is:
 
@@ -57,13 +59,18 @@ of the same underlying `symVM` model.
 The contract model should make private-to-public disclosure explicit rather than
 letting it happen as a side effect of ordinary reads.
 
-## Reads Are Disclosure Requests
+## Reads Are Off-Chain Disclosure Requests
 
-The current working choice is to model reads as explicit disclosure requests.
+The current working choice is to model reads as explicit off-chain disclosure
+requests handled by the `Coordinator`.
 
 That means a read is not "loading" a private value into Solidity. It is a
 request for the system to disclose a handle's underlying value to an authorized
 recipient under an explicit policy.
+
+`symVM` provides the on-chain handles and permission surface that the
+`Coordinator`, coprocessor, and `MPC` consult, but the request itself is not a
+base `symVM` operation.
 
 ## Recipient-Targeted Disclosure
 
@@ -81,7 +88,7 @@ case of confidential balances and confidential application state.
 The current working model is to specify only:
 
 - private reader disclosure, which is returned off-chain to the authorized
-  reader after validation
+  reader after validation by the `Coordinator` and backend services
 
 If a higher-level ERC needs contract-visible disclosure, it should define that
 flow separately.

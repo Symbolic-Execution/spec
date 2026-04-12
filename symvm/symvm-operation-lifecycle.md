@@ -84,6 +84,7 @@ additional conditions.
 
 - track request identifiers and request classes
 - replicate or observe the permission state needed for disclosure
+- verify signed disclosure requests when completion is reader-targeted
 - verify the TEE execution receipt or attestation for the request
 - verify threshold signatures when the request involves decryption or
   re-encryption
@@ -113,7 +114,8 @@ In this mode:
 
 ### Mode B: Reader Disclosure
 
-When an authorized reader requests disclosure for off-chain consumption,
+When an authorized reader requests disclosure through the `Coordinator` for
+off-chain consumption,
 completion may terminate off-chain after validation.
 
 In this mode:
