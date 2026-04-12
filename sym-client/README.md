@@ -29,8 +29,8 @@ reader-targeted ciphertexts returned to the user.
 These reader keys are dedicated encryption keys, separate from the user's
 Ethereum signing key.
 
-For v1, the default model is one long-lived reader keypair per
-`sym-client` installation or device, with explicit rotation when needed.
+The default model is one long-lived reader keypair per `sym-client`
+installation or device, with explicit rotation when needed.
 
 The base spec does not define a direct `sym-client` interface to the
 coprocessor or to `MPC`.

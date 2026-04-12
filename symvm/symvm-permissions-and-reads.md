@@ -15,24 +15,24 @@ the plaintext value behind that handle.
 
 Reads are explicit actions governed by policy.
 
-In the current working model:
+Read model:
 
 - handles may circulate across contracts without automatically granting read
   access
 - read access must be authorized explicitly
-- disclosure should target an authorized reader rather than publishing plaintext
+- disclosure targets an authorized reader rather than publishing plaintext
   on-chain by default
 - read requests are asynchronous, like the rest of the private computation model
 - private reader requests are submitted off-chain to the `Coordinator`, not to
   `symVM`, in the base spec
 
-The intended read model is:
+Read fulfillment:
 
 - private user reads are fulfilled privately to the authorized reader
 - contract-visible disclosure is left out of the base spec unless a higher-level
   ERC requires it
 
-For v1, disclosure authorization should stay simple:
+Disclosure authorization uses the following model:
 
 - the `Coordinator` accepts an EIP-712 signed disclosure request from the
   handle's controlling account, as defined by the higher-level standard
@@ -47,12 +47,12 @@ for plaintext disclosure.
 
 ### Reader-Targeted Disclosure
 
-The default read model should reveal plaintext to an authorized reader, not to
+The default read model reveals plaintext to an authorized reader, not to
 the whole chain.
 
 ### Policy-Separable From Handle Shape
 
-The permission model should be able to evolve without changing the basic handle
+The permission model can evolve without changing the basic handle
 types.
 
 ### Composable Across Applications
@@ -62,13 +62,12 @@ of the same underlying `symVM` model.
 
 ### No Accidental Public Declassification
 
-The contract model should make private-to-public disclosure explicit rather than
+The contract model makes private-to-public disclosure explicit rather than
 letting it happen as a side effect of ordinary reads.
 
 ## Reads Are Off-Chain Disclosure Requests
 
-The current working choice is to model reads as explicit off-chain disclosure
-requests handled by the `Coordinator`.
+Reads are explicit off-chain disclosure requests handled by the `Coordinator`.
 
 That means a read is not "loading" a private value into Solidity. It is a
 request for the system to disclose a handle's underlying value to an authorized
@@ -78,26 +77,22 @@ recipient under an explicit policy.
 `Coordinator`, coprocessor, and `MPC` consult, but the request itself is not a
 base `symVM` operation.
 
-In v1, the simplest model is that the `Coordinator` checks the handle's
-controlling account on-chain and verifies a matching signed request.
+The `Coordinator` checks the handle's controlling account on-chain and verifies
+a matching signed request.
 
 ## Recipient-Targeted Disclosure
 
-The current working model is to make recipient-targeted disclosure the default
-read model.
+Recipient-targeted disclosure is the default read model.
 
-In practice, that means the resolved value should be delivered to a specific
-authorized reader or reader key, rather than emitted as plaintext on-chain.
+The resolved value is delivered to a specific authorized reader or reader key,
+rather than emitted as plaintext on-chain.
 
-This preserves the privacy model more naturally and matches the intended use
-case of confidential balances and confidential application state.
+## Fulfillment Mode
 
-## Current Fulfillment Mode
-
-The current working model is to specify only:
+This spec defines only:
 
 - private reader disclosure, which is returned off-chain to the authorized
   reader after validation by the `Coordinator` and backend services
 
-If a higher-level ERC needs contract-visible disclosure, it should define that
-flow separately.
+A higher-level ERC that needs contract-visible disclosure defines that flow
+separately.

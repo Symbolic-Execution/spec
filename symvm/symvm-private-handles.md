@@ -17,7 +17,7 @@ From the contract's perspective, a handle is a value that can be stored,
 passed, and used as input to symbolic operations, but not directly inspected for
 its underlying plaintext.
 
-In the current working model:
+Handle properties:
 
 - a handle identifies a private value within a given `symVM` domain
 - a handle does not reveal the plaintext value it refers to
@@ -28,7 +28,7 @@ In the current working model:
 
 ## Requirements
 
-A private handle should satisfy the following requirements:
+A private handle satisfies the following requirements:
 
 ### Opaque
 
@@ -48,7 +48,7 @@ single contract.
 
 ### Backend-Agnostic At The Interface
 
-The meaning of a handle should not depend on whether the private value is
+The meaning of a handle does not depend on whether the private value is
 realized by one backend or another.
 
 ### Non-Authorizing By Default
@@ -60,30 +60,24 @@ itself grant plaintext read access.
 
 At the interface level, a handle represents a reference to a private value.
 
-This document does not yet require the underlying implementation to use any
+This document does not require the underlying implementation to use any
 specific storage model, encryption format, or execution backend. It only
 requires that the reference remain meaningful to the rest of `symVM`.
 
-For now, the spec treats handles as references, not plaintext containers and
+The spec treats handles as references, not plaintext containers and
 not ciphertext objects that contracts manipulate directly.
 
 ## Typed Handles
 
-The current working choice is to use typed handles rather than a single generic
-handle with separate type metadata.
-
-This keeps contract interfaces easier to read and makes it simpler to define
-which operations are valid for which values.
-
-At the same time, the first version of the spec should avoid defining a large
-type universe too early.
+The spec uses typed handles rather than a single generic handle with separate
+type metadata.
 
 ## Initial Type Surface
 
 The initial type surface is limited to what is needed to specify a
 confidential token model.
 
-The current minimum set is:
+The minimum set is:
 
 - `suint256` for balances, transfer amounts, and allowances
 - `sbool` for comparisons, predicates, and authorization-related symbolic
@@ -105,15 +99,10 @@ At the contract level, the minimum assumptions are:
 
 ## Reference, Not Capability
 
-The current working choice is to model a handle as a reference, not as a bearer
-capability.
+A handle is modeled as a reference, not as a bearer capability.
 
 That means the handle points to private state, but authorization decisions are
 made by explicit policy and permission logic elsewhere in the system.
-
-This keeps the handle model simpler and makes it easier to reason about
-composability. It also avoids treating leaked handle values as implicit
-plaintext disclosure rights.
 
 ## Consequences Of This Choice
 
@@ -127,7 +116,7 @@ If handles are references rather than capabilities:
 
 ## Naming Choice
 
-The current naming direction is to prefer `symbolic`-style type names.
+The type naming convention uses `symbolic`-style names.
 
 In practice, that means preferring names such as:
 

@@ -23,7 +23,7 @@ job is to:
 - dispatch key operations to `MPC`
 - return status or reader-targeted ciphertext packages to `sym-client`
 
-For v1, disclosure authorization should stay simple:
+Disclosure authorization uses the following model:
 
 - a disclosure request is authorized by a valid EIP-712 signature from the
   handle's controlling account, as defined by the higher-level standard
@@ -54,13 +54,13 @@ The minimal public interface is:
 - `POST /v1/disclosures`
 - `GET /v1/disclosures/{request_id}` for pending requests
 
-`POST /v1/disclosures` should:
+`POST /v1/disclosures` returns:
 
 - return `200` with `ReaderCiphertextV1` when the disclosure is already ready
 - return `202` with a `request_id` when the disclosure remains pending
 
-The signed disclosure request should use EIP-712 with the user's Ethereum
-signature and bind at least:
+The signed disclosure request uses EIP-712 with the user's Ethereum signature
+and binds at least:
 
 - `chain_id`
 - `contract`
@@ -103,7 +103,7 @@ trust anchor.
 
 That means:
 
-- it should not receive plaintext private values
-- it should not hold unilateral decryption keys
+- it does not receive plaintext private values
+- it does not hold unilateral decryption keys
 - it may observe request metadata and access patterns
-- it should be replaceable without changing the `symVM` contract abstraction
+- it remains replaceable without changing the `symVM` contract abstraction

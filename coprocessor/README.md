@@ -4,9 +4,8 @@
 
 Define the minimal role of the coprocessor in the `Symbolic Execution` stack.
 
-This draft keeps the coprocessor spec intentionally small. For now, it only
-states what the coprocessor is responsible for relative to `symVM`, the
-`Coordinator`, and `MPC`.
+This document defines the coprocessor responsibilities relative to `symVM`,
+the `Coordinator`, and `MPC`.
 
 ## Working Model
 
@@ -16,7 +15,7 @@ It observes `symVM` requests, tracks the symbolic dependency graph, resolves
 private computation in an attested environment, and prepares outcomes for
 materialization or off-chain disclosure.
 
-The current direction is to run the execution environment inside a `TEE`.
+The execution environment runs inside a `TEE`.
 
 ## Minimum Responsibilities
 
@@ -30,15 +29,10 @@ The current direction is to run the execution environment inside a `TEE`.
 
 ## Persistence Model
 
-For now, the minimal working assumption is:
-
 - each coprocessor instance maintains its own local database
 - there is no required shared mutable database across coprocessors
 - decentralization comes from shared handle semantics and recoverable inputs,
   not from a single shared storage system
-
-This keeps the architecture simple while leaving room for later replication and
-data-availability work.
 
 ## Interfaces
 
@@ -65,6 +59,3 @@ The coprocessor uses the `MPC` API when a flow requires:
 - authorized transformation of a system-held ciphertext to the enclave's
   attested public key
 - threshold signatures or equivalent authorization artifacts
-
-The base spec does not require the coprocessor to expose a direct public
-interface to `sym-client`.

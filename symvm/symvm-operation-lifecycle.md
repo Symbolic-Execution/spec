@@ -17,7 +17,7 @@ At the contract interface level, a contract can create and compose symbolic
 handles immediately. The concrete private computation behind those handles is
 resolved later by the `Symbolic Execution` stack.
 
-In the current working model, a symbolic operation passes through five stages:
+A symbolic operation passes through five stages:
 
 1. expression
 2. pending symbolic state
@@ -69,13 +69,13 @@ This stage includes:
 This document does not yet require any specific execution backend. It only
 requires that the symbolic requests become concretely evaluable by the system.
 
-The intended behavior is:
+Resolution behavior:
 
 - the executor resolves the pending symbolic work off-chain
 - the result is bound to the already-issued symbolic handle
 
-For `symVM`, the backend artifact should be a TEE-backed execution result plus
-any threshold-crypto material needed for later disclosure.
+For `symVM`, the backend artifact is a TEE-backed execution result plus any
+threshold-crypto material needed for later disclosure.
 
 ## Stage 4: Validation And Policy Checks
 
@@ -125,6 +125,5 @@ In this mode:
 - no on-chain completion is required
 - no plaintext is posted on-chain just to complete the request
 
-If a higher-level ERC later needs a contract-visible completion path, it should
-specify that separately rather than making it part of the base `symVM`
-lifecycle.
+A higher-level ERC that needs a contract-visible completion path defines it
+separately rather than making it part of the base `symVM` lifecycle.

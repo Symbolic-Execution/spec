@@ -75,7 +75,7 @@ sequenceDiagram
     C-->>SC: 202 Accepted + request_id
     C->>C: Verify user signature and on-chain policy
     C->>CP: Resolve handle or fetch current SystemCiphertextV1
-    CP-->>C: Result reference or SystemCiphertextV1
+    CP-->>C: SystemCiphertextV1
     C->>M: Request authorized re-encryption to reader key
     M-->>C: ReaderCiphertextV1
     SC->>C: GET /v1/disclosures/{request_id}
@@ -85,7 +85,7 @@ sequenceDiagram
     SC-->>U: Return plaintext result
 ```
 
-The intended execution split is:
+Execution split:
 
 - `sym-client` encrypts user inputs before transactions are submitted on-chain.
 - `symVM` records symbolic intent on-chain and the `Coprocessor` listens to its

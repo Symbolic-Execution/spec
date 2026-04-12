@@ -21,8 +21,8 @@ At the contract interface level:
 - operations do not synchronously resolve private predicates into ordinary EVM
   booleans
 
-In the current working model, contracts express symbolic intent immediately,
-while concrete private execution and validation happen later in the system.
+Contracts express symbolic intent immediately, while concrete private execution
+and validation happen later in the system.
 
 ## Initial Handle Types
 
@@ -41,7 +41,7 @@ Each operation must define its valid input and output handle types.
 
 ### Opaque
 
-No operation should expose the plaintext value of its inputs or outputs to the
+No operation exposes the plaintext value of its inputs or outputs to the
 contract.
 
 ### Composable
@@ -51,9 +51,9 @@ operations.
 
 ### Interface-Level Purity
 
-At the contract interface level, symbolic operations should behave like pure
-transformations over handles. They should not require the contract to reason
-about backend execution details.
+At the contract interface level, symbolic operations behave like pure
+transformations over handles. They do not require the contract to reason about
+backend execution details.
 
 ### No Synchronous Private Branching
 
@@ -63,7 +63,7 @@ authorization, or resolution step.
 
 ## Initial Operation Surface
 
-The first operation surface should be limited to what is needed for confidential
+The initial operation surface is limited to what is needed for confidential
 token balances, transfer amounts, and token-related predicates.
 
 ### Arithmetic Over `suint256`
@@ -99,7 +99,7 @@ plaintext disclosure at the point where the contract expresses intent.
 Every symbolic operation returns a fresh handle representing a derived private
 value or derived private predicate.
 
-In the current working model:
+Operation result semantics:
 
 - input handles remain valid after the operation is expressed
 - output handles may be stored, emitted, or passed to other contracts
@@ -124,8 +124,5 @@ higher-level standards.
 
 ## Minimal Token-Oriented Surface
 
-The current working choice is to keep the initial operation surface narrowly
-optimized for a confidential token model.
-
-This avoids importing a large symbolic standard library before the semantics of
-request and validation are clear.
+The initial operation surface is narrowly optimized for a confidential token
+model.

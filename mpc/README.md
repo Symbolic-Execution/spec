@@ -5,8 +5,8 @@
 Define the role of `MPC` in the `Symbolic Execution` stack and the API surface
 through which the `Coordinator` and the coprocessor request key operations.
 
-This draft keeps `MPC` narrowly scoped to key custody and threshold
-authorization. It does not treat `MPC` as the general private execution layer.
+`MPC` is scoped to key custody and threshold authorization. It is not the
+general private execution layer.
 
 ## Working Model
 
@@ -17,15 +17,13 @@ Its API is used by the `Coordinator` and the coprocessor.
 
 The transport protocol is HTTP.
 
-In the current architecture direction:
+Architecture:
 
 - the coprocessor performs private execution
 - the `Coordinator` handles public request orchestration
 - `MPC` controls sensitive key operations
 
-This separates computation from unilateral key power.
-
-For v1, enclave authorization should also stay simple:
+Enclave authorization uses the following model:
 
 - each deployment approves a single enclave measurement
 - `MPC` verifies that the attestation binds the enclave public key to that
@@ -64,13 +62,13 @@ The minimal request classes are:
   public key
 - threshold signatures or equivalent authorization artifacts
 
-The base spec does not require a direct `MPC` to contract interface. If a
-higher-level ERC needs a contract-visible completion path, it should specify
-that packaging separately.
+The base spec has no direct `MPC` to contract interface. A higher-level ERC
+that needs a contract-visible completion path defines that packaging
+separately.
 
 ## HTTP API
 
-The first draft should keep the transport simple:
+Transport rules:
 
 - use HTTPS for every deployment-facing endpoint
 - use JSON for control-plane fields and identifiers
@@ -78,7 +76,7 @@ The first draft should keep the transport simple:
 - if an endpoint stays JSON, carry binary payloads as base64url-encoded CBOR
 - version every endpoint and ciphertext envelope explicitly
 
-Recommended first endpoints:
+Endpoints:
 
 - `GET /v1/config` for the current key configuration and supported suites
 - `PUT /v1/readers/{reader_id}` to register or rotate a reader public key
@@ -87,7 +85,7 @@ Recommended first endpoints:
 - `POST /v1/operations/to-reader` for reader-targeted disclosure
 - `POST /v1/operations/sign` for threshold signatures or equivalent artifacts
 
-Every `MPC` request should be bound to:
+Every `MPC` request is bound to:
 
 - `version`
 - `chain_id`
@@ -96,11 +94,11 @@ Every `MPC` request should be bound to:
 - `purpose`
 - `key_id`
 
-Requests from the coprocessor should also carry an attestation or receipt
+Requests from the coprocessor also carry an attestation or receipt
 digest that binds the key operation to a specific execution result and enclave
 public key.
 
-For `POST /v1/operations/to-enclave`, the coprocessor should provide at least:
+For `POST /v1/operations/to-enclave`, the coprocessor provides at least:
 
 - `enclave_pubkey`
 - `attestation`
@@ -110,21 +108,21 @@ For `POST /v1/operations/to-enclave`, the coprocessor should provide at least:
 - `chain_id`
 - `purpose`
 
-## Ciphertext Format Recommendations
+## Ciphertext Formats
 
-The first draft should standardize three envelope types plus one shared inner
+This spec standardizes three envelope types plus one shared inner
 plaintext encoding.
 
 ### Inner Plaintext Encoding
 
 Encode plaintext payloads as canonical CBOR.
 
-For the first typed handle set:
+For the initial typed handle set:
 
-- `suint256` values should be encoded as 32-byte big-endian byte strings
-- `sbool` values should be encoded as a single byte, `0x00` or `0x01`
+- `suint256` values are encoded as 32-byte big-endian byte strings
+- `sbool` values are encoded as a single byte, `0x00` or `0x01`
 
-The AEAD additional authenticated data should bind the ciphertext to protocol
+The AEAD additional authenticated data binds the ciphertext to protocol
 context such as:
 
 - `chain_id`
@@ -140,7 +138,7 @@ context such as:
 Use this envelope for values held under system control and later transformed by
 `MPC` for either enclave execution or reader disclosure.
 
-Recommended construction:
+Construction:
 
 - generate a random 32-byte data-encryption key
 - encrypt the canonical-CBOR plaintext with `AES-256-GCM`
@@ -148,24 +146,18 @@ Recommended construction:
   `HPKE` with `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
 - carry `key_id`, `enc`, `wrapped_key`, `nonce`, `ciphertext`, and `aad`
 
-This keeps payload encryption simple while allowing key rotation and future
-re-encryption flows.
-
 ### `EnclaveCiphertextV1`
 
 Use this envelope when `MPC` authorizes execution and transforms a
 `SystemCiphertextV1` payload to the enclave's attested public key.
 
-Recommended construction:
+Construction:
 
 - use `HPKE` directly to the enclave ephemeral public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
 - carry `key_id`, `enc`, `ciphertext`, and `aad`
 - bind `request_id`, `handle_id`, `chain_id`, `purpose`, and the enclave
   attestation digest in `aad`
-
-This keeps plaintext inside the enclave boundary while avoiding export of raw
-decryption material.
 
 ### `ReaderCiphertextV1`
 
@@ -175,12 +167,10 @@ by `sym-client`, typically delivered through the `Coordinator`.
 Reader keys are dedicated encryption keys managed by `sym-client`, not the
 user's Ethereum signing key.
 
-Recommended construction:
+Construction:
 
 - use `HPKE` directly to the reader public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
 - carry `key_id`, `enc`, `ciphertext`, and `aad`
 - bind `request_id`, `reader_id`, `handle_id`, `chain_id`, and `purpose` in
   `aad`
-
-This avoids exposing a reusable system decryption key to the reader path.
