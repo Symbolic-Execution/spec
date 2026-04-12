@@ -5,9 +5,6 @@
 `MPC` is the threshold key custody and ciphertext transformation service. It
 exposes an internal HTTP API used by the `Coordinator` and the coprocessor.
 
-`MPC` authorizes key operations, transforms ciphertexts to approved recipient
-keys, and produces threshold artifacts when required by the protocol.
-
 Enclave authorization is based on attestation that binds the enclave public
 key to an approved enclave measurement.
 
@@ -21,8 +18,6 @@ key to an approved enclave measurement.
   enclave key
 - transform `SystemCiphertextV1` to `ReaderCiphertextV1` for a registered
   reader key
-- produce threshold signatures or equivalent authorization artifacts when
-  required
 - define the ciphertext envelopes used by the rest of the system
 
 ## Interfaces
@@ -41,7 +36,6 @@ The coprocessor uses `MPC` to:
 
 - transform `SystemCiphertextV1` to `EnclaveCiphertextV1` for an attested
   enclave key
-- request threshold signatures or equivalent authorization artifacts
 
 ## Detailed Specs
 
@@ -50,7 +44,7 @@ The coprocessor uses `MPC` to:
 ## Trust Boundaries
 
 - key shares remain inside `MPC`
-- `MPC` returns ciphertexts and signatures, not raw decryption material
+- `MPC` returns ciphertexts, not raw decryption material
 - `MPC` does not perform symbolic execution
 - enclave authorization is based on an approved measurement and a valid
   attestation for the enclave public key

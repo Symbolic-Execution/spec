@@ -27,8 +27,7 @@ handle's controlling account, as defined by the higher-level standard.
   policy
 - create and track async disclosure request state
 - ask the coprocessor to resolve a handle when the result is not yet ready
-- ask `MPC` to transform ciphertexts to either a reader key or another
-  authorized recipient key such as an attested enclave key
+- ask `MPC` to transform ciphertexts to a reader key
 - return `ReaderCiphertextV1` immediately when ready, or request status when
   the request remains pending
 
@@ -64,7 +63,6 @@ The coordinator reads:
 
 - contract state needed to identify the handle's controlling account and any
   higher-level-standard disclosure policy
-- logs or metadata needed to resolve handle lineage
 
 ### `Coordinator` -> Coprocessor
 
@@ -81,8 +79,6 @@ The coordinator asks `MPC` to:
 - publish the system public configuration
 - register or rotate reader public keys
 - transform a system-held ciphertext into `ReaderCiphertextV1`
-- produce threshold signatures or equivalent authorization artifacts when
-  needed
 
 ## Detailed Specs
 

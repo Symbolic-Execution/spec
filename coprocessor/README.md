@@ -48,7 +48,6 @@ The coprocessor uses `MPC` to:
 
 - transform `SystemCiphertextV1` inputs to `EnclaveCiphertextV1` for an
   attested enclave key
-- request signatures or equivalent authorization artifacts when needed
 
 ## Detailed Specs
 

@@ -3,14 +3,14 @@
 `Symbolic Execution` specifies a model for private, composable execution on
 Ethereum.
 
-The current design is informed by
+The model is informed by
 [ERC-7984](https://eips.ethereum.org/EIPS/eip-7984): private values appear
 on-chain as opaque references, compose across contracts, and are realized
 asynchronously off-chain.
 
 ## Core Model
 
-Private computation on Ethereum should look like a native contract primitive.
+Private computation on Ethereum looks like a native contract primitive.
 
 That means:
 
@@ -22,7 +22,7 @@ That means:
 
 ## Architecture Modules
 
-The current minimal architecture has five pieces:
+The architecture has five pieces:
 
 - `sym-client`: SDK that prepares private inputs, manages reader keys, and
   receives authorized outputs
@@ -30,8 +30,7 @@ The current minimal architecture has five pieces:
 - `Coordinator`: off-chain control plane for authorization, async request
   tracking, and routing between services
 - `Coprocessor`: resolves symbolic work off-chain
-- `MPC`: provides threshold key custody, authorized ciphertext
-  transformation, re-encryption, and related authorization flows
+- `MPC`: provides threshold key custody and ciphertext transformation
 
 ## High-Level Flow
 
@@ -50,7 +49,7 @@ sequenceDiagram
         participant SV as "symVM"
     end
     box "Off-chain Private Execution"
-        participant CP as "Coprocessor (TEE Enclave)"
+        participant CP as "Coprocessor"
         participant M as "MPC"
     end
 
@@ -61,17 +60,17 @@ sequenceDiagram
     SC->>TK: Submit tx with encrypted value or handle request
     TK->>SV: Create handle and record symbolic operation
     SV-->>CP: Emit HandleImportedV1 / OperationRequestedV1
-    CP->>CP: Reconstruct symbolic graph inside enclave
+    CP->>CP: Reconstruct symbolic graph and schedule execution
     CP->>CP: Generate enclave keypair and attestation
     CP->>M: Request authorized re-encryption to enclave key
     M-->>CP: EnclaveCiphertextV1
     Note over CP,M: MPC re-encrypts ciphertexts to the enclave key.
     CP->>CP: Decrypt with enclave private key and process computation
     CP->>CP: Materialize private state and bind result to handle
-    CP-->>C: Publish status, receipts, and result references
+    CP-->>C: Publish status, receipts, and SystemCiphertextV1
 
     U->>SC: Request asynchronous disclosure for a handle
-    SC->>C: POST /v1/disclosures {signed request, reader key}
+    SC->>C: POST /v1/disclosures {signed request, reader_id}
     C-->>SC: 202 Accepted + request_id
     C->>C: Verify user signature and on-chain policy
     C->>CP: Resolve handle or fetch current SystemCiphertextV1
@@ -95,31 +94,7 @@ Execution split:
   the `Coprocessor` and `MPC`.
 - private computation happens inside the coprocessor enclave.
 - `MPC` handles threshold key operations such as re-encryption to an enclave
-  key, re-encryption to a reader key, and signing.
+  key and re-encryption to a reader key.
 - user reads are asynchronous: the user asks through `sym-client`, the
   `Coordinator` authorizes and tracks the request, `MPC` returns a
   reader-targeted ciphertext, and `sym-client` decrypts it locally.
-
-## Scope
-
-This specification currently focuses on:
-
-- core terminology
-- private values and symbolic operations
-- how `sym-client`, `symVM`, `Coordinator`, `Coprocessor`, and `MPC` connect
-- operation lifecycle from expression to materialization or disclosure
-- permissions for reads and disclosure
-- reusable application patterns built on top of the model
-
-## Specs
-
-- [`./sym-client/README.md`](./sym-client/README.md)
-- [`./coordinator/README.md`](./coordinator/README.md)
-- [`./coprocessor/README.md`](./coprocessor/README.md)
-- [`./mpc/README.md`](./mpc/README.md)
-- [`./symvm/README.md`](./symvm/README.md)
-- [`./symvm/symvm-private-handles.md`](./symvm/symvm-private-handles.md)
-- [`./symvm/symvm-operations.md`](./symvm/symvm-operations.md)
-- [`./symvm/symvm-event-surface.md`](./symvm/symvm-event-surface.md)
-- [`./symvm/symvm-operation-lifecycle.md`](./symvm/symvm-operation-lifecycle.md)
-- [`./symvm/symvm-permissions-and-reads.md`](./symvm/symvm-permissions-and-reads.md)

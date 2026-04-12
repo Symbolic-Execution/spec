@@ -2,8 +2,12 @@
 
 ## Scope
 
-Define the public HTTP API, signed request formats, processing rules, and
-backend interfaces used by the `Coordinator`.
+Define the public HTTP API and disclosure authorization rules used by the
+`Coordinator`.
+
+The coordinator is the public API boundary between `sym-client` and the
+backend services. Backend-specific interfaces are defined in the coprocessor
+and `MPC` specs.
 
 ## Serialization
 
@@ -29,18 +33,7 @@ pub struct X25519PublicKey(pub [u8; 32]);
 pub struct EthereumSignature(pub [u8; 65]);
 ```
 
-## `reader_id`
-
-`reader_id` is defined as:
-
-```rust
-pub fn reader_id(reader_pubkey: X25519PublicKey) -> ReaderId {
-    ReaderId(keccak256(reader_pubkey.0))
-}
-```
-
-The path parameter in `PUT /v1/readers/{reader_id}` matches the hash of the
-supplied reader public key.
+`reader_id` is `keccak256(reader_pubkey)`.
 
 ## Disclosure Status
 
@@ -59,14 +52,12 @@ State transitions:
 - `Pending -> Failed`
 - `Pending -> Expired`
 
-`Ready`, `Failed`, and `Expired` are terminal states.
-
 ## Public API
 
 ### `GET /v1/config`
 
 Returns the public configuration needed by `sym-client` for encryption and
-signing.
+coordinator requests.
 
 ```rust
 pub struct CoordinatorConfigResponse {
@@ -115,11 +106,7 @@ pub struct PutReaderResponse {
     pub registered_at: UnixSeconds,
     pub expires_at: Option<UnixSeconds>,
 }
-```
 
-The signature uses EIP-712 over the following typed message:
-
-```rust
 pub struct RegisterReader {
     pub controller: Address,
     pub reader_id: ReaderId,
@@ -128,8 +115,7 @@ pub struct RegisterReader {
 }
 ```
 
-`reader_pubkey` is not signed directly. The signature binds `reader_id`, and
-the coordinator verifies that `reader_id == keccak256(reader_pubkey)`.
+The coordinator verifies that `reader_id == keccak256(reader_pubkey)`.
 
 ### `POST /v1/disclosures`
 
@@ -146,11 +132,19 @@ pub struct PostDisclosureRequest {
     pub signature: EthereumSignature,
 }
 
+pub struct DisclosureRequest {
+    pub contract: Address,
+    pub handle_id: HandleId,
+    pub reader_id: ReaderId,
+    pub nonce: Nonce,
+    pub expiry: UnixSeconds,
+}
+
 pub enum PostDisclosureResponse {
     Ready {
         request_id: RequestId,
         status: DisclosureStatus,
-        ciphertext: ReaderCiphertextV1,
+        ciphertext: Vec<u8>,
     },
     Pending {
         request_id: RequestId,
@@ -159,28 +153,8 @@ pub enum PostDisclosureResponse {
 }
 ```
 
-The signature uses EIP-712 over the following typed message:
-
-```rust
-pub struct DisclosureRequest {
-    pub contract: Address,
-    pub handle_id: HandleId,
-    pub reader_id: ReaderId,
-    pub nonce: Nonce,
-    pub expiry: UnixSeconds,
-}
-```
-
-The EIP-712 domain is:
-
-```rust
-pub struct CoordinatorEip712Domain {
-    pub name: String,
-    pub version: String,
-    pub chain_id: u64,
-    pub salt: Bytes32,
-}
-```
+The `Ready` response returns `ReaderCiphertextV1`, encoded according to the
+`MPC` spec.
 
 ### `GET /v1/disclosures/{request_id}`
 
@@ -195,7 +169,7 @@ pub enum GetDisclosureResponse {
     Ready {
         request_id: RequestId,
         status: DisclosureStatus,
-        ciphertext: ReaderCiphertextV1,
+        ciphertext: Vec<u8>,
     },
     Failed {
         request_id: RequestId,
@@ -208,6 +182,37 @@ pub enum GetDisclosureResponse {
     },
 }
 ```
+
+The `Ready` response returns `ReaderCiphertextV1`, encoded according to the
+`MPC` spec.
+
+## Authorization
+
+Disclosure authorization uses the following algorithm:
+
+1. parse and validate the request body
+2. verify `expiry >= now`
+3. verify the nonce has not been used for the controlling account
+4. resolve the controlling account from chain state
+5. verify the EIP-712 signature against that controlling account
+6. verify that `reader_id` is registered to the same controlling account
+
+The controlling account is resolved by the higher-level standard.
+
+Replay protection is enforced by `(controller, nonce)`.
+
+## Disclosure Processing
+
+The coordinator processes `POST /v1/disclosures` in the following order:
+
+1. run the authorization algorithm
+2. ask the coprocessor for `SystemCiphertextV1` if the handle is not already ready
+3. ask `MPC` to transform that ciphertext to `ReaderCiphertextV1`
+4. return `200` if the ciphertext is ready, otherwise return `202` with a
+   `request_id`
+
+`SystemCiphertextV1` and `ReaderCiphertextV1` are defined in
+[`../mpc/mpc-api.md`](../mpc/mpc-api.md).
 
 ## Error Responses
 
@@ -228,102 +233,3 @@ HTTP status mapping:
 - `410` for expired requests
 - `422` for unknown readers
 - `503` for backend availability failures
-
-## Authorization
-
-Disclosure authorization uses the following algorithm:
-
-1. parse and validate the request body
-2. verify `expiry >= now`
-3. verify the nonce has not been used for the controlling account
-4. resolve the controlling account from chain state
-5. verify the EIP-712 signature against that controlling account
-6. verify that `reader_id` is registered to the same controlling account
-
-The controlling account is resolved by the higher-level standard.
-
-## Disclosure Processing
-
-The coordinator processes `POST /v1/disclosures` in the following order:
-
-1. run the authorization algorithm
-2. ask the coprocessor for the current `SystemCiphertextV1`
-3. ask `MPC` to transform that ciphertext to `ReaderCiphertextV1`
-4. return `200` if the ciphertext is ready, otherwise return `202` with a
-   `request_id`
-
-## `Coordinator` -> Coprocessor
-
-```rust
-pub struct ResolveHandleRequest {
-    pub request_id: RequestId,
-    pub chain_id: u64,
-    pub contract: Address,
-    pub handle_id: HandleId,
-}
-
-pub enum ResolveHandleResponse {
-    Pending,
-    Ready {
-        system_ciphertext: SystemCiphertextV1,
-        receipt: Vec<u8>,
-    },
-    Failed {
-        reason: String,
-    },
-}
-```
-
-## `Coordinator` -> `MPC`
-
-```rust
-pub struct MpcRegisterReaderRequest {
-    pub reader_id: ReaderId,
-    pub reader_pubkey: X25519PublicKey,
-}
-
-pub struct MpcRegisterReaderResponse {
-    pub reader_id: ReaderId,
-}
-
-pub struct ToReaderRequest {
-    pub request_id: RequestId,
-    pub chain_id: u64,
-    pub handle_id: HandleId,
-    pub reader_id: ReaderId,
-    pub system_ciphertext: SystemCiphertextV1,
-}
-
-pub struct ToReaderResponse {
-    pub ciphertext: ReaderCiphertextV1,
-}
-```
-
-## Expiry And Replay Rules
-
-- a disclosure request with `expiry < now` is rejected
-- a `pending` disclosure request becomes `expired` when `expiry < now`
-- replay protection is enforced by `(controller, nonce)`
-
-## Ciphertext Types
-
-The coordinator treats these payloads as opaque types defined by the `MPC`
-specification.
-
-```rust
-pub struct SystemCiphertextV1 {
-    pub key_id: Bytes32,
-    pub enc: Vec<u8>,
-    pub wrapped_key: Vec<u8>,
-    pub nonce: [u8; 12],
-    pub ciphertext: Vec<u8>,
-    pub aad: Vec<u8>,
-}
-
-pub struct ReaderCiphertextV1 {
-    pub key_id: Bytes32,
-    pub enc: Vec<u8>,
-    pub ciphertext: Vec<u8>,
-    pub aad: Vec<u8>,
-}
-```

@@ -19,6 +19,7 @@ The event surface satisfies the following requirements:
 - every derived handle has exactly one originating `symVM` event
 - input handle events carry the encrypted payload needed to seed off-chain
   execution
+- operation semantics follow [`./symvm-operations.md`](./symvm-operations.md)
 
 ## Core Types
 
@@ -134,27 +135,14 @@ Ingestion rules:
 - the coprocessor records `operation`, `input_handles`, and `output_type`
 - the handle becomes executable once every input handle is ready
 
-## Operation Arity
-
-The required input count is defined by `operation`:
-
-- `Add`, `Sub`, `Eq`, `Lt`, `Lte`, `Gt`, `Gte`, `And`, `Or` require two inputs
-- `Not` requires one input
-- `Select` requires three inputs
-
-An event is invalid if `input_handles.len()` does not match the required arity.
-
 ## Validity Rules
 
 - `domain_id` must match the `symVM` domain that emitted the event
 - a handle id must not be created more than once
 - every input handle in `OperationRequestedV1` must refer to a previously
   observed handle in the same `domain_id`
-- `output_type` must match the operation's declared return type
-- input handle types must match the operation's declared input types
-- for `Select`, the first input handle type must be `Sbool`
-- for `Select`, the second and third input handle types must match
-- for `Select`, `output_type` must match the second and third input handle type
+- operation arity and input/output type rules must match
+  [`./symvm-operations.md`](./symvm-operations.md)
 
 ## Event Emission Rules
 
@@ -170,8 +158,9 @@ The coprocessor reconstructs the symbolic graph as follows:
 
 1. consume `HandleImportedV1` and register ready source handles
 2. consume `OperationRequestedV1` and register pending derived handles
-3. mark a derived handle executable once all input handles are ready
-4. execute the symbolic operation and bind the result to `output_handle_id`
+3. validate operation arity and input/output types
+4. mark a derived handle executable once all input handles are ready
+5. execute the symbolic operation and bind the result to `output_handle_id`
 
 ## Not Included
 

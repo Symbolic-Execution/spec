@@ -1,98 +1,56 @@
 # `symVM` Permissions And Reads
 
-## Goal
+## Scope
 
-Define how `symVM` separates symbolic handle possession from authorization to
-read underlying private values.
+Define how `symVM` separates handle possession from authorization to read the
+underlying private value.
 
-This document focuses on the minimum disclosure model needed for the first
-confidential token-oriented specs.
+## Read Model
 
-## Working Model
+In `symVM`, possession of a handle is not permission to read its plaintext.
 
-In `symVM`, possession of a handle is not the same thing as permission to read
-the plaintext value behind that handle.
+Reads use the following model:
 
-Reads are explicit actions governed by policy.
-
-Read model:
-
-- handles may circulate across contracts without automatically granting read
-  access
-- read access must be authorized explicitly
+- read access is authorized explicitly
 - disclosure targets an authorized reader rather than publishing plaintext
   on-chain by default
-- read requests are asynchronous, like the rest of the private computation model
+- read requests are asynchronous
 - private reader requests are submitted off-chain to the `Coordinator`, not to
-  `symVM`, in the base spec
+  `symVM`
 
-Read fulfillment:
+The base model defines only off-chain reader-targeted disclosure.
 
-- private user reads are fulfilled privately to the authorized reader
-- contract-visible disclosure is left out of the base spec unless a higher-level
-  ERC requires it
+## Authorization
 
-Disclosure authorization uses the following model:
+Disclosure authorization is based on:
 
-- the `Coordinator` accepts an EIP-712 signed disclosure request from the
-  handle's controlling account, as defined by the higher-level standard
-- no persistent base-spec approval registry is required
+- an EIP-712 signed request from the handle's controlling account, as defined
+  by the higher-level standard
+- coordinator checks against current on-chain policy
+
+The base model has no persistent approval registry.
 
 ## Requirements
 
-### Explicit Authorization
+The permission model must remain:
 
-The system must not treat handle possession alone as sufficient authorization
-for plaintext disclosure.
+- explicit: handle possession alone is not enough
+- reader-targeted: the default disclosure target is a specific authorized
+  reader
+- separable from handle shape: permissions can evolve without changing handle
+  types
+- composable: higher-level standards can define richer delegation patterns
+- non-public by default: plaintext is not revealed as a side effect of an
+  ordinary read
 
-### Reader-Targeted Disclosure
+## Fulfillment
 
-The default read model reveals plaintext to an authorized reader, not to
-the whole chain.
+For reader-targeted disclosure:
 
-### Policy-Separable From Handle Shape
+- the `Coordinator` verifies the signed request
+- the backend resolves the handle if needed
+- `MPC` returns `ReaderCiphertextV1`
+- the authorized reader decrypts locally
 
-The permission model can evolve without changing the basic handle
-types.
-
-### Composable Across Applications
-
-Applications must be able to build reusable read and delegation patterns on top
-of the same underlying `symVM` model.
-
-### No Accidental Public Declassification
-
-The contract model makes private-to-public disclosure explicit rather than
-letting it happen as a side effect of ordinary reads.
-
-## Reads Are Off-Chain Disclosure Requests
-
-Reads are explicit off-chain disclosure requests handled by the `Coordinator`.
-
-That means a read is not "loading" a private value into Solidity. It is a
-request for the system to disclose a handle's underlying value to an authorized
-recipient under an explicit policy.
-
-`symVM` provides the on-chain handles and permission surface that the
-`Coordinator`, coprocessor, and `MPC` consult, but the request itself is not a
-base `symVM` operation.
-
-The `Coordinator` checks the handle's controlling account on-chain and verifies
-a matching signed request.
-
-## Recipient-Targeted Disclosure
-
-Recipient-targeted disclosure is the default read model.
-
-The resolved value is delivered to a specific authorized reader or reader key,
-rather than emitted as plaintext on-chain.
-
-## Fulfillment Mode
-
-This spec defines only:
-
-- private reader disclosure, which is returned off-chain to the authorized
-  reader after validation by the `Coordinator` and backend services
-
-A higher-level ERC that needs contract-visible disclosure defines that flow
+A higher-level ERC that needs contract-visible disclosure defines that
 separately.

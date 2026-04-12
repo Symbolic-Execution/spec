@@ -30,7 +30,6 @@ pub struct AttestationDigest(pub Bytes32);
 
 pub struct X25519PublicKey(pub [u8; 32]);
 pub struct Attestation(pub Vec<u8>);
-pub struct MessageDigest(pub Bytes32);
 ```
 
 ## `reader_id`
@@ -162,28 +161,6 @@ Authorization rules:
 6. verify `request.handle_id == system_ciphertext.aad.handle_id`
 7. construct `ReaderAadV1` from the request and the source system `aad`
 8. return `ReaderCiphertextV1`
-
-## Threshold Signatures
-
-### `POST /v1/operations/sign`
-
-Produces a threshold signature or equivalent authorization artifact.
-
-```rust
-pub struct SignRequest {
-    pub request_id: RequestId,
-    pub chain_id: u64,
-    pub key_id: KeyId,
-    pub message_digest: MessageDigest,
-}
-
-pub struct SignResponse {
-    pub artifact: Vec<u8>,
-}
-```
-
-The message format and artifact format are defined by the higher-level
-standard that uses the signature.
 
 ## Error Responses
 

@@ -199,26 +199,6 @@ The coprocessor requests one `to-enclave` transformation for each input
 
 ## Ciphertext Types
 
-The coprocessor treats these payloads as types defined by the `MPC`
-specification.
-
-The canonical `aad` encoding is defined in
+`SystemCiphertextV1`, `EnclaveCiphertextV1`, `EnclaveAadV1`, and
+`SystemHandleAadV1` are defined in
 [`../mpc/mpc-api.md`](../mpc/mpc-api.md).
-
-```rust
-pub struct SystemCiphertextV1 {
-    pub key_id: Bytes32,
-    pub enc: Vec<u8>,
-    pub wrapped_key: Vec<u8>,
-    pub nonce: [u8; 12],
-    pub ciphertext: Vec<u8>,
-    pub aad: Vec<u8>,
-}
-
-pub struct EnclaveCiphertextV1 {
-    pub key_id: Bytes32,
-    pub enc: Vec<u8>,
-    pub ciphertext: Vec<u8>,
-    pub aad: Vec<u8>,
-}
-```
