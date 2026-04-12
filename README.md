@@ -67,7 +67,7 @@ sequenceDiagram
     CP->>CP: Generate enclave keypair and attestation
     CP->>M: Request authorized re-encryption to enclave key
     M-->>CP: EnclaveCiphertextV1
-    Note over CP,M: MPC never releases decryption material. It transforms a system-held ciphertext into a ciphertext for the enclave's attested public key.
+    Note over CP,M: MPC re-encrypts ciphertexts to the enclave key.
     CP->>CP: Decrypt with enclave private key and process computation
     CP->>CP: Materialize private state and bind result to handle
     CP-->>C: Publish status, receipts, and result references
@@ -97,8 +97,7 @@ The intended execution split is:
   the `Coprocessor` and `MPC`.
 - private computation happens inside the coprocessor enclave, not inside `MPC`.
 - `MPC` stays outside the enclave and handles threshold key operations such as
-  authorized transform-to-enclave-key, re-encryption to a reader key, and
-  signing. It never releases raw decryption material.
+  re-encryption to an enclave key, re-encryption to a reader key, and signing.
 - user reads are asynchronous: the user asks through `sym-client`, the
   `Coordinator` authorizes and tracks the request, `MPC` returns a
   reader-targeted ciphertext, and `sym-client` decrypts it locally.
