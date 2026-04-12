@@ -64,7 +64,8 @@ Ingestion rules:
 - use the `safe` chain view by default
 - identify each consumed event by `(chain_id, block_hash, tx_hash, log_index)`
 - discard derived state from orphaned blocks
-- reconstruct handle dependencies from `symVM` events and contract metadata
+- reconstruct handle dependencies from the canonical `symVM` event surface
+  defined in [`../symvm/symvm-event-surface.md`](../symvm/symvm-event-surface.md)
 - create pending handle state for newly observed derived handles
 - schedule execution only after the required inputs for a handle are available
 

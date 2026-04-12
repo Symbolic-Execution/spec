@@ -60,7 +60,7 @@ sequenceDiagram
     SC->>SC: Encrypt value as SystemCiphertextV1
     SC->>TK: Submit tx with encrypted value or handle request
     TK->>SV: Create handle and record symbolic operation
-    SV-->>CP: Emit events and metadata
+    SV-->>CP: Emit HandleImportedV1 / OperationRequestedV1
     CP->>CP: Reconstruct symbolic graph inside enclave
     CP->>CP: Generate enclave keypair and attestation
     CP->>M: Request authorized re-encryption to enclave key
@@ -88,8 +88,8 @@ sequenceDiagram
 Execution split:
 
 - `sym-client` encrypts user inputs before transactions are submitted on-chain.
-- `symVM` records symbolic intent on-chain and the `Coprocessor` listens to its
-  events asynchronously.
+- `symVM` records symbolic intent on-chain and emits the canonical event
+  surface consumed by the `Coprocessor`.
 - `Coordinator` is the off-chain entrypoint for user-facing async requests. It
   verifies signatures, checks policy, tracks request state, and routes work to
   the `Coprocessor` and `MPC`.
@@ -120,5 +120,6 @@ This specification currently focuses on:
 - [`./symvm/README.md`](./symvm/README.md)
 - [`./symvm/symvm-private-handles.md`](./symvm/symvm-private-handles.md)
 - [`./symvm/symvm-operations.md`](./symvm/symvm-operations.md)
+- [`./symvm/symvm-event-surface.md`](./symvm/symvm-event-surface.md)
 - [`./symvm/symvm-operation-lifecycle.md`](./symvm/symvm-operation-lifecycle.md)
 - [`./symvm/symvm-permissions-and-reads.md`](./symvm/symvm-permissions-and-reads.md)

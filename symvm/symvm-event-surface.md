@@ -1,0 +1,172 @@
+# `symVM` Event Surface
+
+## Scope
+
+Define the canonical on-chain event surface emitted by `symVM` for coprocessor
+ingestion.
+
+This event surface is the integration boundary between `symVM` and the
+coprocessor host. It defines the minimum information required to reconstruct
+handle lineage, private input sources, and symbolic operation dependencies.
+
+## Event Principles
+
+The event surface satisfies the following requirements:
+
+- the coprocessor can reconstruct handle lineage from `symVM` logs alone
+- the coprocessor does not need to decode arbitrary application calldata
+- event order is the canonical order of symbolic expression
+- every derived handle has exactly one originating `symVM` event
+- input handle events carry the encrypted payload needed to seed off-chain
+  execution
+
+## Core Types
+
+```rust
+pub type Address = [u8; 20];
+pub type Bytes32 = [u8; 32];
+
+pub struct DomainId(pub Bytes32);
+pub struct HandleId(pub Bytes32);
+
+pub enum HandleType {
+    Suint256 = 1,
+    Sbool = 2,
+}
+
+pub enum OperationCode {
+    Add = 1,
+    Sub = 2,
+    Eq = 3,
+    Lt = 4,
+    Lte = 5,
+    Gt = 6,
+    Gte = 7,
+    And = 8,
+    Or = 9,
+    Not = 10,
+}
+```
+
+`HandleType` maps to the canonical `type_tag` strings used in ciphertext
+bindings:
+
+- `HandleType::Suint256` -> `"suint256"`
+- `HandleType::Sbool` -> `"sbool"`
+
+## Event Order
+
+The canonical ingestion order is log order within the canonical chain view.
+
+For the coprocessor:
+
+- consume only logs from the `safe` chain view by default
+- identify each log by `(chain_id, block_hash, tx_hash, log_index)`
+- process logs in ascending `(block_number, tx_index, log_index)` order
+- discard derived state from orphaned blocks
+
+## Event Types
+
+### `HandleImportedV1`
+
+`HandleImportedV1` creates a handle from a client-provided private input.
+
+```rust
+pub struct HandleImportedV1 {
+    pub domain_id: DomainId,
+    pub contract: Address,
+    pub handle_id: HandleId,
+    pub handle_type: HandleType,
+    pub system_ciphertext: Vec<u8>,
+}
+```
+
+Field semantics:
+
+- `domain_id` identifies the `symVM` domain
+- `contract` is the contract that invoked `symVM`
+- `handle_id` is the newly created handle
+- `handle_type` is the contract-level handle type
+- `system_ciphertext` is the canonical-CBOR encoding of `SystemCiphertextV1`
+
+Ingestion rules:
+
+- `handle_id` becomes a ready source handle
+- `system_ciphertext` seeds the off-chain value for that handle
+- the coprocessor records the handle type from `handle_type`
+
+### `OperationRequestedV1`
+
+`OperationRequestedV1` creates a derived handle from one symbolic operation.
+
+```rust
+pub struct OperationRequestedV1 {
+    pub domain_id: DomainId,
+    pub contract: Address,
+    pub output_handle_id: HandleId,
+    pub output_type: HandleType,
+    pub operation: OperationCode,
+    pub input_handles: Vec<HandleId>,
+}
+```
+
+Field semantics:
+
+- `domain_id` identifies the `symVM` domain
+- `contract` is the contract that invoked `symVM`
+- `output_handle_id` is the newly created derived handle
+- `output_type` is the type of the derived handle
+- `operation` identifies the symbolic operation
+- `input_handles` is the ordered input list for the operation
+
+Input ordering is part of the event semantics.
+
+Ingestion rules:
+
+- `output_handle_id` becomes a pending derived handle
+- the coprocessor records `operation`, `input_handles`, and `output_type`
+- the handle becomes executable once every input handle is ready
+
+## Operation Arity
+
+The required input count is defined by `operation`:
+
+- `Add`, `Sub`, `Eq`, `Lt`, `Lte`, `Gt`, `Gte`, `And`, `Or` require two inputs
+- `Not` requires one input
+
+An event is invalid if `input_handles.len()` does not match the required arity.
+
+## Validity Rules
+
+- `domain_id` must match the `symVM` domain that emitted the event
+- a handle id must not be created more than once
+- every input handle in `OperationRequestedV1` must refer to a previously
+  observed handle in the same `domain_id`
+- `output_type` must match the operation's declared return type
+- input handle types must match the operation's declared input types
+
+## Event Emission Rules
+
+- `symVM` emits exactly one `HandleImportedV1` for each imported encrypted
+  input handle
+- `symVM` emits exactly one `OperationRequestedV1` for each symbolic operation
+  expression
+- the emitted event is the canonical source for coprocessor ingestion
+
+## Coprocessor Reconstruction
+
+The coprocessor reconstructs the symbolic graph as follows:
+
+1. consume `HandleImportedV1` and register ready source handles
+2. consume `OperationRequestedV1` and register pending derived handles
+3. mark a derived handle executable once all input handles are ready
+4. execute the symbolic operation and bind the result to `output_handle_id`
+
+## Not Included
+
+The base event surface does not define:
+
+- on-chain result completion events
+- on-chain disclosure request events
+- batch operation events
+- alternate data-availability packaging for imported ciphertexts

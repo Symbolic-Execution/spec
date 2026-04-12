@@ -29,7 +29,8 @@ The coprocessor has two parts:
 
 The coprocessor host:
 
-- monitors the canonical `symVM` event stream
+- monitors the canonical `symVM` event stream defined in
+  [`../symvm/symvm-event-surface.md`](../symvm/symvm-event-surface.md)
 - reconstructs handle lineage and dependencies
 - tracks which handles are pending, ready, or failed
 
