@@ -6,13 +6,11 @@ Ethereum.
 The current design is informed by
 [ERC-7984](https://eips.ethereum.org/EIPS/eip-7984): private values appear
 on-chain as opaque references, compose across contracts, and are realized
-asynchronously off-chain. This repository documents that model, starting from
-the contract-facing abstraction and the minimum set of supporting system roles.
+asynchronously off-chain.
 
 ## Core Model
 
-Private computation on Ethereum should look like a contract primitive rather
-than an external oracle pattern.
+Private computation on Ethereum should look like a native contract primitive.
 
 That means:
 
@@ -48,7 +46,7 @@ sequenceDiagram
         participant C as "Coordinator API"
     end
     box "On-chain"
-        participant TK as "Token Contract"
+        participant TK as "Smart Contract"
         participant SV as "symVM"
     end
     box "Off-chain Private Execution"
@@ -95,9 +93,9 @@ The intended execution split is:
 - `Coordinator` is the off-chain entrypoint for user-facing async requests. It
   verifies signatures, checks policy, tracks request state, and routes work to
   the `Coprocessor` and `MPC`.
-- private computation happens inside the coprocessor enclave, not inside `MPC`.
-- `MPC` stays outside the enclave and handles threshold key operations such as
-  re-encryption to an enclave key, re-encryption to a reader key, and signing.
+- private computation happens inside the coprocessor enclave.
+- `MPC` handles threshold key operations such as re-encryption to an enclave
+  key, re-encryption to a reader key, and signing.
 - user reads are asynchronous: the user asks through `sym-client`, the
   `Coordinator` authorizes and tracks the request, `MPC` returns a
   reader-targeted ciphertext, and `sym-client` decrypts it locally.
