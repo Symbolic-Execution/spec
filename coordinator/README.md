@@ -96,6 +96,11 @@ The coordinator asks `MPC` to:
 - produce threshold signatures or equivalent authorization artifacts when
   needed
 
+## Detailed Specs
+
+- [`./coordinator-api.md`](./coordinator-api.md)
+- [`./coordinator-runtime.md`](./coordinator-runtime.md)
+
 ## Trust Boundaries
 
 The coordinator is policy and workflow infrastructure, not a cryptographic
