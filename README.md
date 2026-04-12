@@ -36,18 +36,61 @@ The current minimal architecture has four pieces:
 
 ## High-Level Flow
 
-1. The `sym-client` SDK prepares private inputs and submits transactions to contracts
-   that use `symVM`.
-2. `symVM` gives contracts the on-chain abstraction for private handles and
-   symbolic operations.
-3. The `Coprocessor` observes those requests, tracks dependencies, and resolves
-   private execution off-chain.
-4. When a flow requires key operations, the `Coprocessor` and `sym-client`
-   call `MPC` over HTTP.
-5. `MPC` performs threshold decryption, re-encryption, key registration, or
-   signing work.
-6. The resolved result is materialized as private state or disclosed to an
-   authorized reader.
+```mermaid
+sequenceDiagram
+    autonumber
+    box "User / SDK"
+        participant U as "User"
+        participant SC as "sym-client SDK"
+    end
+    box "On-chain"
+        participant TK as "Token Contract"
+        participant SV as "symVM"
+    end
+    box "Off-chain Private Execution"
+        participant CP as "Coprocessor (TEE Enclave)"
+        participant M as "MPC API"
+    end
+
+    U->>SC: Prepare private input
+    SC->>M: GET /v1/config
+    M-->>SC: Current public config and suite
+    SC->>SC: Encrypt value as SystemCiphertextV1
+    SC->>TK: Submit tx with encrypted value or handle request
+    TK->>SV: Create handle and record symbolic operation
+    SV-->>CP: Emit events and metadata
+    CP->>CP: Reconstruct symbolic graph inside enclave
+    CP->>M: Request decryption material for attested execution
+    M-->>CP: Threshold-authorized decryption material
+    Note over CP,M: MPC is outside the enclave. It releases decryption material to an attested enclave session, while plaintext processing stays inside the enclave.
+    CP->>CP: Decrypt inside enclave and process computation
+    CP->>CP: Materialize private state and bind result to handle
+
+    U->>SC: Request asynchronous disclosure for a handle
+    SC->>M: Register or rotate reader key
+    SC->>TK: Submit disclosure request
+    TK->>SV: Record disclosure request
+    SV-->>CP: Emit disclosure event
+    CP->>M: Request reader-targeted re-encryption
+    M-->>CP: Store reader-targeted disclosure package
+    SC->>M: GET /v1/disclosures/{request_id}
+    M-->>SC: ReaderCiphertextV1
+    Note over SC,M: User disclosures remain encrypted to the reader key until sym-client decrypts locally.
+    SC->>SC: Decrypt with reader secret
+    SC-->>U: Return plaintext result
+```
+
+The intended execution split is:
+
+- `sym-client` encrypts user inputs before transactions are submitted on-chain.
+- `symVM` records symbolic intent on-chain and the `Coprocessor` listens to its
+  events asynchronously.
+- private computation happens inside the coprocessor enclave, not inside `MPC`.
+- `MPC` stays outside the enclave and handles threshold key operations such as
+  decryption authorization, re-encryption to a reader key, and signing.
+- user reads are asynchronous: the user asks through `sym-client`, the
+  disclosure is prepared through `MPC`, and `sym-client` decrypts the returned
+  reader-targeted ciphertext locally.
 
 ## Scope
 
