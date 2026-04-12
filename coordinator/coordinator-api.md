@@ -260,7 +260,6 @@ pub struct ResolveHandleRequest {
     pub chain_id: u64,
     pub contract: Address,
     pub handle_id: HandleId,
-    pub purpose: String,
 }
 
 pub enum ResolveHandleResponse {
@@ -292,7 +291,6 @@ pub struct ToReaderRequest {
     pub chain_id: u64,
     pub handle_id: HandleId,
     pub reader_id: ReaderId,
-    pub purpose: String,
     pub system_ciphertext: SystemCiphertextV1,
 }
 

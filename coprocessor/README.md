@@ -1,61 +1,62 @@
 # Coprocessor Specification
 
-## Goal
+## Role
 
-Define the minimal role of the coprocessor in the `Symbolic Execution` stack.
+The coprocessor is the off-chain private execution system. It monitors `symVM`
+events, reconstructs symbolic dependencies, resolves private computation, and
+exposes resolved handle state to the `Coordinator`.
 
-This document defines the coprocessor responsibilities relative to `symVM`,
-the `Coordinator`, and `MPC`.
+The coprocessor has two parts:
 
-## Working Model
+- a host service that monitors the chain, tracks handle state, and serves the
+  internal API
+- an enclave that performs private computation and produces attested outputs
 
-The coprocessor is the off-chain private execution layer.
+## Responsibilities
 
-It observes `symVM` requests, tracks the symbolic dependency graph, resolves
-private computation in an attested environment, and prepares outcomes for
-materialization or off-chain disclosure.
-
-The execution environment runs inside a `TEE`.
-
-## Minimum Responsibilities
-
-- observe the symbolic requests emitted or implied by `symVM`
-- track issued handles and pending symbolic state
-- persist a local copy of the private handle registry and execution metadata
-- resolve symbolic computations in the private execution environment
-- produce attested results for later verification or disclosure
-- expose result status and `SystemCiphertextV1` outputs to the `Coordinator`
-- coordinate with `MPC` when key operations are required
-
-## Persistence Model
-
-- each coprocessor instance maintains its own local database
-- there is no required shared mutable database across coprocessors
-- decentralization comes from shared handle semantics and recoverable inputs,
-  not from a single shared storage system
+- monitor the `symVM` event stream and associated chain metadata
+- track issued handles, dependencies, and pending symbolic state
+- schedule execution when the required handle inputs are available
+- request re-encryption of input ciphertexts to an attested enclave key
+- decrypt and evaluate symbolic operations inside the enclave
+- package resolved outputs as `SystemCiphertextV1`
+- expose handle status, `SystemCiphertextV1`, and execution receipts to the
+  `Coordinator`
 
 ## Interfaces
 
-### Coprocessor <- `symVM`
+### Coprocessor <- `symVM` / Chain
 
-The coprocessor consumes:
+The coprocessor host:
 
-- handle identifiers
-- symbolic operation requests
-- any on-chain metadata needed to reconstruct the symbolic graph
+- monitors the canonical `symVM` event stream
+- reconstructs handle lineage and dependencies
+- tracks which handles are pending, ready, or failed
 
-### `Coordinator` <-> Coprocessor
+### `Coordinator` -> Coprocessor
 
-The coordinator may ask the coprocessor to:
+The coordinator uses the coprocessor to:
 
-- resolve a handle whose value is still pending
-- return the current `SystemCiphertextV1`
-- report job status, receipts, or failure information
+- request resolution of a handle
+- fetch `SystemCiphertextV1`
+- fetch execution receipts and failure status
 
-### Coprocessor <-> `MPC`
+### Coprocessor -> `MPC`
 
-The coprocessor uses the `MPC` API when a flow requires:
+The coprocessor uses `MPC` to:
 
-- authorized transformation of a system-held ciphertext to the enclave's
-  attested public key
-- threshold signatures or equivalent authorization artifacts
+- transform `SystemCiphertextV1` inputs to `EnclaveCiphertextV1` for an
+  attested enclave key
+- request signatures or equivalent authorization artifacts when needed
+
+## Detailed Specs
+
+- [`./coprocessor-api.md`](./coprocessor-api.md)
+
+## Trust Boundaries
+
+- chain monitoring and request routing happen in the coprocessor host
+- private computation happens inside the enclave
+- the coprocessor does not receive raw decryption material from `MPC`
+- handle results leave the enclave as `SystemCiphertextV1` plus execution
+  receipts

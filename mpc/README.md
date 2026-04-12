@@ -91,7 +91,6 @@ Every `MPC` request is bound to:
 - `chain_id`
 - `domain_id`
 - `request_id`
-- `purpose`
 - `key_id`
 
 Requests from the coprocessor also carry an attestation or receipt
@@ -106,7 +105,6 @@ For `POST /v1/operations/to-enclave`, the coprocessor provides at least:
 - `request_id`
 - `handle_id`
 - `chain_id`
-- `purpose`
 
 ## Ciphertext Formats
 
@@ -122,14 +120,13 @@ For the initial typed handle set:
 - `suint256` values are encoded as 32-byte big-endian byte strings
 - `sbool` values are encoded as a single byte, `0x00` or `0x01`
 
-The AEAD additional authenticated data binds the ciphertext to protocol
-context such as:
+The AEAD additional authenticated data (`aad`) binds the ciphertext to
+protocol context such as:
 
 - `chain_id`
 - `domain_id`
 - `contract`
 - `handle_id` or `request_id`
-- `purpose`
 - `type_tag`
 - `key_id`
 
@@ -156,8 +153,8 @@ Construction:
 - use `HPKE` directly to the enclave ephemeral public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
 - carry `key_id`, `enc`, `ciphertext`, and `aad`
-- bind `request_id`, `handle_id`, `chain_id`, `purpose`, and the enclave
-  attestation digest in `aad`
+- bind `request_id`, `handle_id`, `chain_id`, and the enclave attestation
+  digest in `aad`
 
 ### `ReaderCiphertextV1`
 
@@ -172,5 +169,4 @@ Construction:
 - use `HPKE` directly to the reader public key
 - use `X25519`, `HKDF-SHA256`, and `AES-256-GCM`
 - carry `key_id`, `enc`, `ciphertext`, and `aad`
-- bind `request_id`, `reader_id`, `handle_id`, `chain_id`, and `purpose` in
-  `aad`
+- bind `request_id`, `reader_id`, `handle_id`, and `chain_id` in `aad`
