@@ -45,6 +45,7 @@ pub enum OperationCode {
     And = 8,
     Or = 9,
     Not = 10,
+    Select = 11,
 }
 ```
 
@@ -121,6 +122,12 @@ Field semantics:
 
 Input ordering is part of the event semantics.
 
+For `Select`, `input_handles` is ordered as:
+
+- predicate
+- when_true
+- when_false
+
 Ingestion rules:
 
 - `output_handle_id` becomes a pending derived handle
@@ -133,6 +140,7 @@ The required input count is defined by `operation`:
 
 - `Add`, `Sub`, `Eq`, `Lt`, `Lte`, `Gt`, `Gte`, `And`, `Or` require two inputs
 - `Not` requires one input
+- `Select` requires three inputs
 
 An event is invalid if `input_handles.len()` does not match the required arity.
 
@@ -144,6 +152,9 @@ An event is invalid if `input_handles.len()` does not match the required arity.
   observed handle in the same `domain_id`
 - `output_type` must match the operation's declared return type
 - input handle types must match the operation's declared input types
+- for `Select`, the first input handle type must be `Sbool`
+- for `Select`, the second and third input handle types must match
+- for `Select`, `output_type` must match the second and third input handle type
 
 ## Event Emission Rules
 

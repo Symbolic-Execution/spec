@@ -94,6 +94,27 @@ checks, allowance checks, and equality conditions over private values.
 These operations are sufficient to combine private predicates without requiring
 plaintext disclosure at the point where the contract expresses intent.
 
+### Selection Over Matching Handle Types
+
+- `select(sbool, suint256, suint256) -> suint256`
+- `select(sbool, sbool, sbool) -> sbool`
+
+`select` is the branchless conditional-choice primitive of `symVM`.
+
+It expresses:
+
+- return the second input when the predicate is true
+- return the third input when the predicate is false
+
+without converting the predicate into an ordinary Solidity branch condition.
+
+Selection rules:
+
+- the first input is always an `sbool`
+- the second and third inputs must have the same handle type
+- the output type matches the second and third inputs
+- the chosen branch is not observable to the contract at expression time
+
 ## Semantics Of Operation Results
 
 Every symbolic operation returns a fresh handle representing a derived private
@@ -105,6 +126,8 @@ Operation result semantics:
 - output handles may be stored, emitted, or passed to other contracts
 - an `sbool` result is still a handle and not an immediately inspectable branch
   condition
+- `select` expresses private conditional choice without ordinary EVM control
+  flow
 - acceptance or rejection of operations that depend on private validity belongs
   to a later stage of the system, not to ordinary Solidity control flow
 
@@ -114,7 +137,6 @@ The first operation surface does not yet define:
 
 - multiplication or division
 - mixed public and symbolic arithmetic
-- symbolic selection such as `select(pred, a, b)`
 - aggregate operations
 - bitwise operations
 - explicit literal constructors
@@ -125,4 +147,4 @@ higher-level standards.
 ## Minimal Token-Oriented Surface
 
 The initial operation surface is narrowly optimized for a confidential token
-model.
+model, including private predicates and branchless private selection.

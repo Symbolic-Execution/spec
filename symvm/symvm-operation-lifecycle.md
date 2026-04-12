@@ -34,6 +34,8 @@ At this stage:
 
 - the contract does not receive plaintext results
 - private predicates are not turned into ordinary Solidity branch conditions
+- private conditional choice is expressed with symbolic operations such as
+  `select`, not with ordinary Solidity branching
 - symbolic intent is recorded in a form that the rest of the system can resolve
 
 The purpose of this stage is to preserve a synchronous contract-facing
