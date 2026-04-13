@@ -1,30 +1,18 @@
 # `symVM` Operations
 
-## Scope
-
-Define the symbolic operation surface exposed by `symVM`.
-
 ## Operation Model
 
-A `symVM` operation consumes one or more handles and returns a fresh handle for
-the result.
+Every `symVM` call returns a fresh handle.
 
-Operation properties:
+In the base model:
 
-- operations are typed
-- operations do not reveal plaintext
-- operations return fresh handles
-- private predicates remain symbolic handles
-- contracts express symbolic intent immediately, while resolution happens later
+- the initial handle types are `suint256` and `sbool`
+- inputs remain valid after the call
+- plaintext is not revealed
+- `sbool` remains a handle, not a Solidity `bool`
+- contracts express symbolic intent immediately and resolution happens later
 
-## Handle Types
-
-The initial handle type surface is:
-
-- `suint256`
-- `sbool`
-
-## Operations
+## Operation Surface
 
 ### Arithmetic
 
@@ -69,38 +57,30 @@ Selection rules:
 - `fromPlaintext(uint256) -> suint256`
 - `fromPlaintext(bool) -> sbool`
 
-`fromPlaintext` creates a handle from a public constant known to the
-contract. The plaintext value is visible on-chain in the transaction
-calldata.
+`fromPlaintext` turns a public constant into a handle. The value is public
+on-chain. It is not a client-encrypted input.
 
-This is not the same as importing a client-encrypted input. No
-`SystemCiphertextV1` is involved. The coprocessor treats the value as a
-known plaintext and produces `SystemCiphertextV1` for the resulting handle
-so that it can participate in later symbolic operations.
+The coprocessor later materializes `SystemCiphertextV1` for the resulting
+handle so that the handle can participate in later symbolic operations.
 
-`fromPlaintext` is required for patterns like:
+Use `fromPlaintext` for reusable public constants such as:
 
 ```
 suint256 zero = SYM.fromPlaintext(0);
 suint256 transferValue = SYM.select(canTransfer, amount, zero);
 ```
 
-The resulting handle is owned by the calling contract and follows the same
-authorization rules as any other handle.
-
-## Handle Authorization
+## Authorization To Use Handles
 
 `symVM` validates that the calling contract is authorized to use each input
 handle before executing an operation.
 
-Authorization rule: a contract may use a handle as an input to an operation
-if and only if:
+A contract may use a handle in an operation if and only if:
 
 - the handle was created by the same contract in the same domain, or
 - the handle was explicitly allowed to the calling contract
 
-`symVM` maintains a per-handle allowlist. A contract that owns a handle may
-grant or revoke usage to another contract:
+A handle owner may manage operation-use grants with:
 
 - `allow(handle_id, target)` — grants `target` persistent permission to use
   `handle_id` as an input to operations
@@ -109,46 +89,20 @@ grant or revoke usage to another contract:
 - `allowTransient(handle_id, target)` — grants `target` permission to use
   `handle_id` within the current transaction only
 
-Transient permissions use EIP-1153 transient storage and are cleared at
-the end of the transaction. This is the expected pattern for passing handles
-during cross-contract calls within a single transaction.
+Rules:
 
-Only the handle's creating contract may call `allow`, `revoke`, and
-`allowTransient`. This means transient grants are single-hop: if contract A
-creates a handle and grants transient access to contract B, contract B can
-use the handle in operations but cannot forward it to contract C. Only A can
-grant access to C. This is intentional — multi-hop forwarding requires
-explicit grants from the owner at each step.
+- only the creating contract may call `allow`, `revoke`, and `allowTransient`
+- `allowTransient` lasts only for the current transaction
+- grants authorize operation use only, not disclosure
+- grants do not transfer ownership
+- transient forwarding is single-hop because only the creating contract can
+  grant again
 
-Authorization properties:
+## Invalid Calls
 
-- a handle's creating contract is always authorized implicitly
-- `allow`, `revoke`, and `allowTransient` do not transfer ownership
-- authorization to use a handle in operations is separate from authorization
-  to request disclosure
-- Solidity storage visibility already prevents external contracts from
-  reading handle IDs stored in private or internal state
-
-## Type Rules
-
-Each operation defines:
-
-- input arity
-- valid input handle types
-- output handle type
-
-An operation is invalid if its inputs do not satisfy those rules.
-
-## Result Semantics
-
-Every operation returns a fresh derived handle.
-
-At the contract interface level:
-
-- input handles remain valid after the operation
-- output handles may be stored, passed, or used in later operations
-- `sbool` results are handles, not Solidity `bool` values
-- `select` expresses private conditional choice without EVM control flow
+- wrong arity or wrong input types are invalid
+- `select` requires an `sbool` predicate and the same type on both branches
+- uninitialized handles are invalid inputs
 
 ## Not Included
 

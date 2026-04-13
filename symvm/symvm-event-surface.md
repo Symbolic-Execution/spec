@@ -1,24 +1,15 @@
 # `symVM` Event Surface
 
-## Scope
+This event surface is the canonical on-chain input to the coprocessor.
 
-Define the canonical on-chain event surface emitted by `symVM` for coprocessor
-ingestion.
+The coprocessor should be able to reconstruct handle lineage and execution
+dependencies from logs alone, without decoding arbitrary application calldata.
 
-This event surface is the integration boundary between `symVM` and the
-coprocessor host. It defines the minimum information required to reconstruct
-handle lineage, private input sources, and symbolic operation dependencies.
+## Design Rules
 
-## Event Principles
-
-The event surface satisfies the following requirements:
-
-- the coprocessor can reconstruct handle lineage from `symVM` logs alone
-- the coprocessor does not need to decode arbitrary application calldata
-- event order is the canonical order of symbolic expression
-- every derived handle has exactly one originating `symVM` event
-- input handle events carry the encrypted payload needed to seed off-chain
-  execution
+- log order is the canonical order of symbolic expression
+- source-handle events carry the data needed to seed off-chain execution
+- derived-handle events identify the operation and its ordered inputs
 - operation semantics follow [`./symvm-operations.md`](./symvm-operations.md)
 
 ## Core Types
@@ -47,7 +38,6 @@ pub enum OperationCode {
     Or = 9,
     Not = 10,
     Select = 11,
-    FromPlaintext = 12,
 }
 ```
 
@@ -56,6 +46,9 @@ bindings:
 
 - `HandleType::Suint256` -> `"suint256"`
 - `HandleType::Sbool` -> `"sbool"`
+
+`fromPlaintext` is represented by `HandleFromPlaintextV1`, not by
+`OperationRequestedV1`.
 
 ## Event Order
 
@@ -84,8 +77,6 @@ pub struct HandleImportedV1 {
 }
 ```
 
-Field semantics:
-
 - `domain_id` identifies the `symVM` domain
 - `contract` is the contract that invoked `symVM`
 - `handle_id` is the newly created handle
@@ -111,8 +102,6 @@ pub struct HandleFromPlaintextV1 {
     pub plaintext: Bytes32,
 }
 ```
-
-Field semantics:
 
 - `domain_id` identifies the `symVM` domain
 - `contract` is the contract that invoked `symVM`
@@ -144,8 +133,6 @@ pub struct OperationRequestedV1 {
 }
 ```
 
-Field semantics:
-
 - `domain_id` identifies the `symVM` domain
 - `contract` is the contract that invoked `symVM`
 - `output_handle_id` is the newly created derived handle
@@ -167,12 +154,10 @@ Ingestion rules:
 - the coprocessor records `operation`, `input_handles`, and `output_type`
 - the handle becomes executable once every input handle is ready
 
-## Input Validation
+## Import Validation
 
 `symVM` validates client-submitted ciphertexts on-chain at import time before
 creating a handle and emitting `HandleImportedV1`.
-
-Validation rules:
 
 1. parse the `aad` field of the submitted `SystemCiphertextV1` as
    `SystemInputAadV1`
@@ -183,17 +168,14 @@ Validation rules:
 6. verify `aad.domain_id` matches the `symVM` domain
 7. verify `aad.chain_id` matches the current chain
 
-If any check fails, the import is rejected and no handle is created.
+Any failure rejects the import and creates no handle.
 
-These checks provide early rejection of malformed or misbound ciphertexts.
-The MPC will independently reject invalid ciphertexts at re-encryption time,
-so the on-chain checks are not the sole line of defense — they prevent
-wasting coprocessor work on inputs that will inevitably fail.
+These checks are for early rejection only. `MPC` still validates ciphertext
+bindings later.
 
-Re-submitting the same valid ciphertext in a separate transaction creates a
-new handle with a new handle ID. The underlying private value is the same,
-but the handle is distinct. This is not an attack — it is equivalent to
-assigning the same value to two variables.
+Re-submitting the same valid ciphertext in a different transaction creates a
+new handle with a new handle ID. The value is the same, but the handle is
+distinct.
 
 ## Validity Rules
 
@@ -204,27 +186,16 @@ assigning the same value to two variables.
 - operation arity and input/output type rules must match
   [`./symvm-operations.md`](./symvm-operations.md)
 
-## Event Emission Rules
-
-- `symVM` emits exactly one `HandleImportedV1` for each imported encrypted
-  input handle
-- `symVM` emits exactly one `HandleFromPlaintextV1` for each plaintext
-  conversion
-- `symVM` emits exactly one `OperationRequestedV1` for each symbolic operation
-  expression
-- the emitted event is the canonical source for coprocessor ingestion
-
 ## Coprocessor Reconstruction
 
-The coprocessor reconstructs the symbolic graph as follows:
+The coprocessor reconstructs the graph as follows:
 
 1. consume `HandleImportedV1` and register ready source handles
-2. consume `HandleFromPlaintextV1`, encrypt the known plaintext, and register
-   ready source handles
+2. consume `HandleFromPlaintextV1`, synthesize `SystemCiphertextV1`, and
+   register ready source handles
 3. consume `OperationRequestedV1` and register pending derived handles
-4. validate operation arity and input/output types
-5. mark a derived handle executable once all input handles are ready
-6. execute the symbolic operation and bind the result to `output_handle_id`
+4. once inputs are ready, validate arity and types, execute the operation, and
+   bind the result to `output_handle_id`
 
 ## Not Included
 

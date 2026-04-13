@@ -1,43 +1,22 @@
 # `symVM` Private Handles
 
-## Scope
+## Model
 
-Define what a private handle is in `symVM` and what contracts can assume about
-it.
+A private handle is an opaque on-chain reference to a private value in a
+`symVM` domain.
 
-## Handle Semantics
+A handle:
 
-A private handle is an opaque on-chain reference to a private value managed by
-the `Symbolic Execution` stack.
-
-At the contract interface level, a handle:
-
-- identifies a private value within a `symVM` domain
 - can be stored, passed, and used as input to symbolic operations
-- does not reveal the underlying plaintext
-- does not by itself authorize plaintext disclosure
-- remains meaningful independently of the backend used to realize the value
+- does not reveal plaintext
+- is not a ciphertext object
+- does not by itself authorize disclosure
+- remains valid while the underlying private value is live
 
-A handle is a reference, not a bearer capability and not a ciphertext object.
-
-## Required Properties
-
-A private handle must be:
-
-- opaque: the handle value does not reveal the plaintext
-- stable: the reference remains valid while the private value is live
-- composable: the handle can move across contract boundaries
-- typed: the contract interface knows the handle type
-- non-authorizing: possession of the handle does not grant read access
-
-## Initial Handle Types
-
-The initial handle type surface is:
+The initial handle types are:
 
 - `suint256`
 - `sbool`
-
-These types cover the minimum confidential token model.
 
 ## Solidity Representation
 
@@ -48,24 +27,16 @@ type suint256 is bytes32;
 type sbool is bytes32;
 ```
 
-This representation:
+This keeps handles opaque and type-safe at zero runtime gas cost.
+The `SYM` library may use `.wrap()` and `.unwrap()` internally when it needs
+raw `bytes32` values.
 
-- makes handles opaque at the language level — arithmetic and comparison
-  operators do not apply
-- provides compile-time type safety between `suint256`, `sbool`, and raw
-  `bytes32` at zero runtime gas cost
-- allows handles to be stored in mappings, passed as function arguments, and
-  emitted in events using standard Solidity patterns
-- uses `.wrap()` and `.unwrap()` for conversions when the library needs to
-  operate on raw `bytes32` internally
-
-A zero-valued handle (`bytes32(0)`) represents an uninitialized handle.
-`symVM` operations treat uninitialized handles as invalid inputs.
+`bytes32(0)` is an uninitialized handle. `symVM` rejects uninitialized handles
+as operation inputs.
 
 ## Handle ID Derivation
 
-`symVM` assigns handle IDs deterministically. The contract does not choose
-the handle ID — it receives it as the return value of the operation.
+`symVM` assigns handle IDs. Contracts do not choose them.
 
 ```rust
 pub fn derive_handle_id(
@@ -77,40 +48,25 @@ pub fn derive_handle_id(
 }
 ```
 
-The hash input is the Solidity `abi.encode` of the three fields in order:
-`domain_id` as `bytes32`, `contract` as `address`, `handle_nonce` as
-`uint64`. This is the standard ABI encoding with each value padded to 32
-bytes.
+The preimage is `abi.encode(domain_id, contract, handle_nonce)` with
+`domain_id` as `bytes32`, `contract` as `address`, and `handle_nonce` as
+`uint64`.
 
-`handle_nonce` is a per-contract counter maintained by `symVM`. It starts at
-zero for each `(domain_id, contract)` pair. `symVM` reads the current counter
-value, uses it to derive the handle ID, and then increments the counter by
-one. The first handle created by a contract in a domain has `handle_nonce =
-0`.
+`handle_nonce` is a per-`(domain_id, contract)` counter. It starts at `0`.
+`symVM` reads the current counter, derives the handle ID, then increments the
+counter by one.
 
-Derivation properties:
+This makes handle IDs:
 
-- uniqueness is guaranteed by the counter
-- the handle ID is deterministic from on-chain state
-- the coprocessor can verify handle IDs from event data
-- contracts do not need to predict handle IDs in advance
+- deterministic from on-chain state
+- unique for a given contract in a given domain
+- verifiable by the coprocessor from emitted events
 
-## Contract Semantics
+## What Contracts Can Assume
 
-At the contract level:
-
-1. a contract may store a handle in state
-2. a contract may pass a handle to another contract
-3. a contract may use one or more handles as inputs to symbolic operations
-4. a contract may receive new handles as outputs from symbolic operations
-5. a contract may participate in flows that later authorize disclosure for a
-   handle
-
-## Consequences
-
-Because handles are references rather than capabilities:
-
-- contracts can exchange handles without automatically delegating read access
-- read authorization is defined elsewhere in the system
-- logs and calldata containing handles are sensitive metadata, but not
-  automatic declassification
+- a contract may store a handle in state
+- a contract may pass a handle to another contract
+- a contract may use an authorized handle in later symbolic operations
+- a contract receives fresh handles from imports, plaintext conversion, and symbolic operations
+- disclosure authorization is defined separately in
+  [`./symvm-permissions-and-reads.md`](./symvm-permissions-and-reads.md)
