@@ -39,6 +39,39 @@ The initial handle type surface is:
 
 These types cover the minimum confidential token model.
 
+## Handle ID Derivation
+
+`symVM` assigns handle IDs deterministically. The contract does not choose
+the handle ID — it receives it as the return value of the operation.
+
+```rust
+pub fn derive_handle_id(
+    domain_id: DomainId,
+    contract: Address,
+    handle_nonce: u64,
+) -> HandleId {
+    HandleId(keccak256(abi.encode(domain_id, contract, handle_nonce)))
+}
+```
+
+The hash input is the Solidity `abi.encode` of the three fields in order:
+`domain_id` as `bytes32`, `contract` as `address`, `handle_nonce` as
+`uint64`. This is the standard ABI encoding with each value padded to 32
+bytes.
+
+`handle_nonce` is a per-contract counter maintained by `symVM`. It starts at
+zero for each `(domain_id, contract)` pair. `symVM` reads the current counter
+value, uses it to derive the handle ID, and then increments the counter by
+one. The first handle created by a contract in a domain has `handle_nonce =
+0`.
+
+Derivation properties:
+
+- uniqueness is guaranteed by the counter
+- the handle ID is deterministic from on-chain state
+- the coprocessor can verify handle IDs from event data
+- contracts do not need to predict handle IDs in advance
+
 ## Contract Semantics
 
 At the contract level:

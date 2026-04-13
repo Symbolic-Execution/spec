@@ -64,6 +64,47 @@ Selection rules:
 - the output type matches the second and third inputs
 - the chosen branch is not observable to the contract at expression time
 
+## Handle Authorization
+
+`symVM` validates that the calling contract is authorized to use each input
+handle before executing an operation.
+
+Authorization rule: a contract may use a handle as an input to an operation
+if and only if:
+
+- the handle was created by the same contract in the same domain, or
+- the handle was explicitly allowed to the calling contract
+
+`symVM` maintains a per-handle allowlist. A contract that owns a handle may
+grant or revoke usage to another contract:
+
+- `allow(handle_id, target)` — grants `target` persistent permission to use
+  `handle_id` as an input to operations
+- `revoke(handle_id, target)` — removes a previously granted persistent
+  permission
+- `allowTransient(handle_id, target)` — grants `target` permission to use
+  `handle_id` within the current transaction only
+
+Transient permissions use EIP-1153 transient storage and are cleared at
+the end of the transaction. This is the expected pattern for passing handles
+during cross-contract calls within a single transaction.
+
+Only the handle's creating contract may call `allow`, `revoke`, and
+`allowTransient`. This means transient grants are single-hop: if contract A
+creates a handle and grants transient access to contract B, contract B can
+use the handle in operations but cannot forward it to contract C. Only A can
+grant access to C. This is intentional — multi-hop forwarding requires
+explicit grants from the owner at each step.
+
+Authorization properties:
+
+- a handle's creating contract is always authorized implicitly
+- `allow`, `revoke`, and `allowTransient` do not transfer ownership
+- authorization to use a handle in operations is separate from authorization
+  to request disclosure
+- Solidity storage visibility already prevents external contracts from
+  reading handle IDs stored in private or internal state
+
 ## Type Rules
 
 Each operation defines:
