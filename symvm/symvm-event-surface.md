@@ -47,6 +47,7 @@ pub enum OperationCode {
     Or = 9,
     Not = 10,
     Select = 11,
+    FromPlaintext = 12,
 }
 ```
 
@@ -96,6 +97,37 @@ Ingestion rules:
 - `handle_id` becomes a ready source handle
 - `system_ciphertext` seeds the off-chain value for that handle
 - the coprocessor records the handle type from `handle_type`
+
+### `HandleFromPlaintextV1`
+
+`HandleFromPlaintextV1` creates a handle from a public plaintext constant.
+
+```rust
+pub struct HandleFromPlaintextV1 {
+    pub domain_id: DomainId,
+    pub contract: Address,
+    pub handle_id: HandleId,
+    pub handle_type: HandleType,
+    pub plaintext: Bytes32,
+}
+```
+
+Field semantics:
+
+- `domain_id` identifies the `symVM` domain
+- `contract` is the contract that invoked `symVM`
+- `handle_id` is the newly created handle
+- `handle_type` is the contract-level handle type
+- `plaintext` is the public value, encoded as a 32-byte big-endian value
+  for `suint256` or as `0x00`/`0x01` left-padded to 32 bytes for `sbool`
+
+Ingestion rules:
+
+- `handle_id` becomes a ready source handle
+- the coprocessor produces `SystemCiphertextV1` from the known plaintext
+  using the system public key and `SystemHandleAadV1`
+- the plaintext is public on-chain — this event does not provide privacy for
+  the value itself
 
 ### `OperationRequestedV1`
 
@@ -176,6 +208,8 @@ assigning the same value to two variables.
 
 - `symVM` emits exactly one `HandleImportedV1` for each imported encrypted
   input handle
+- `symVM` emits exactly one `HandleFromPlaintextV1` for each plaintext
+  conversion
 - `symVM` emits exactly one `OperationRequestedV1` for each symbolic operation
   expression
 - the emitted event is the canonical source for coprocessor ingestion
@@ -185,10 +219,12 @@ assigning the same value to two variables.
 The coprocessor reconstructs the symbolic graph as follows:
 
 1. consume `HandleImportedV1` and register ready source handles
-2. consume `OperationRequestedV1` and register pending derived handles
-3. validate operation arity and input/output types
-4. mark a derived handle executable once all input handles are ready
-5. execute the symbolic operation and bind the result to `output_handle_id`
+2. consume `HandleFromPlaintextV1`, encrypt the known plaintext, and register
+   ready source handles
+3. consume `OperationRequestedV1` and register pending derived handles
+4. validate operation arity and input/output types
+5. mark a derived handle executable once all input handles are ready
+6. execute the symbolic operation and bind the result to `output_handle_id`
 
 ## Not Included
 

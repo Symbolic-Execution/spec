@@ -64,6 +64,30 @@ Selection rules:
 - the output type matches the second and third inputs
 - the chosen branch is not observable to the contract at expression time
 
+### Plaintext Conversion
+
+- `fromPlaintext(uint256) -> suint256`
+- `fromPlaintext(bool) -> sbool`
+
+`fromPlaintext` creates a handle from a public constant known to the
+contract. The plaintext value is visible on-chain in the transaction
+calldata.
+
+This is not the same as importing a client-encrypted input. No
+`SystemCiphertextV1` is involved. The coprocessor treats the value as a
+known plaintext and produces `SystemCiphertextV1` for the resulting handle
+so that it can participate in later symbolic operations.
+
+`fromPlaintext` is required for patterns like:
+
+```
+suint256 zero = SYM.fromPlaintext(0);
+suint256 transferValue = SYM.select(canTransfer, amount, zero);
+```
+
+The resulting handle is owned by the calling contract and follows the same
+authorization rules as any other handle.
+
 ## Handle Authorization
 
 `symVM` validates that the calling contract is authorized to use each input
@@ -134,4 +158,3 @@ This operation surface does not define:
 - mixed public and symbolic arithmetic
 - aggregate operations
 - bitwise operations
-- explicit literal constructors

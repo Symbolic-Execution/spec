@@ -39,6 +39,29 @@ The initial handle type surface is:
 
 These types cover the minimum confidential token model.
 
+## Solidity Representation
+
+Handle types are Solidity user-defined value types wrapping `bytes32`:
+
+```solidity
+type suint256 is bytes32;
+type sbool is bytes32;
+```
+
+This representation:
+
+- makes handles opaque at the language level — arithmetic and comparison
+  operators do not apply
+- provides compile-time type safety between `suint256`, `sbool`, and raw
+  `bytes32` at zero runtime gas cost
+- allows handles to be stored in mappings, passed as function arguments, and
+  emitted in events using standard Solidity patterns
+- uses `.wrap()` and `.unwrap()` for conversions when the library needs to
+  operate on raw `bytes32` internally
+
+A zero-valued handle (`bytes32(0)`) represents an uninitialized handle.
+`symVM` operations treat uninitialized handles as invalid inputs.
+
 ## Handle ID Derivation
 
 `symVM` assigns handle IDs deterministically. The contract does not choose
